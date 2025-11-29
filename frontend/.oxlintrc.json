@@ -1,0 +1,68 @@
+{
+  "plugins": ["typescript", "react", "jsx-a11y", "import", "unicorn"],
+  "env": {
+    "browser": true,
+    "node": true
+  },
+  "ignorePatterns": [
+    "build/**",
+    "public/**",
+    "node_modules/**",
+    ".cache/**",
+    "**/*.css",
+    "**/*.gen.ts*",
+    "app/utils/schemas.d.ts"
+  ],
+  "rules": {
+    "typescript/no-unused-vars": ["error", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+    "typescript/consistent-type-imports": "warn",
+    "typescript/no-explicit-any": "off",
+    "typescript/ban-ts-comment": "off",
+    "typescript/no-non-null-assertion": "off",
+
+    "react/display-name": "warn",
+    "react/jsx-key": "warn",
+    "react/jsx-no-target-blank": "warn",
+    "react/jsx-no-undef": "error",
+    "react/no-danger-with-children": "warn",
+    "react/no-direct-mutation-state": "warn",
+    "react/no-find-dom-node": "warn",
+    "react/no-render-return-value": "error",
+    "react/no-string-refs": "warn",
+    "react/require-render-return": "error",
+
+    "react-hooks/exhaustive-deps": "warn",
+    "react-hooks/rules-of-hooks": "error",
+
+    "import/no-cycle": "error",
+
+    "no-dupe-class-members": "off",
+    "no-undef": "off",
+    "prefer-const": "off"
+  },
+  "overrides": [
+    {
+      "files": ["**/*.server.ts", "**/*.server.tsx"],
+      "rules": {
+        "no-restricted-imports": ["error", {
+          "patterns": [
+            {
+              "group": ["**/services/**"],
+              "message": "Server files must not import services. Use apiClient from @/lib/api.server"
+            },
+            {
+              "group": ["@/lib/api.client", "**/lib/api.client*"],
+              "message": "Server files must use @/lib/api.server, not @/lib/api.client"
+            }
+          ]
+        }]
+      }
+    },
+    {
+      "files": ["app/routes/**/*.ts", "app/routes/**/*.tsx", "app/root.ts", "app/root.tsx"],
+      "rules": {
+        "react/display-name": "off"
+      }
+    }
+  ]
+}
