@@ -33,10 +33,10 @@ Libra is an Agent-Driven TODO Executor - a full-stack application where an AI ag
 
 **Tech Stack:**
 - FastAPI + LangGraph + LangChain
-- Supabase (PostgreSQL)
+- Supabase (PostgreSQL) - **Note: Supabase Python SDK does NOT support async**
 - LangGraph Postgres Checkpointer
 - SSE for real-time updates
-- OpenAI GPT-4
+- Anthropic Claude API
 
 ## Constitutional Principles (MANDATORY)
 
