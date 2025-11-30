@@ -15,7 +15,7 @@ import {
 type ExecutionEventWithTitle = ExecutionEvent & { taskTitle?: string };
 
 interface ChatMessageProps {
-  role: MessageRole;
+  messageRole: MessageRole;
   content: string;
   isStreaming?: boolean;
   executionEvent?: ExecutionEventWithTitle;
@@ -122,7 +122,7 @@ function ExecutionEventMessage({ event }: { event: ExecutionEventWithTitle }) {
 }
 
 export function ChatMessage({
-  role,
+  messageRole,
   content,
   isStreaming = false,
   executionEvent,
@@ -133,7 +133,7 @@ export function ChatMessage({
   }
 
   // System messages without execution events (like "Starting execution...")
-  if (role === "system") {
+  if (messageRole === "system") {
     return (
       <div className="flex justify-center py-2">
         <span className="text-xs text-muted-foreground bg-muted px-3 py-1 rounded-full">
@@ -143,7 +143,7 @@ export function ChatMessage({
     );
   }
 
-  const isAssistant = role === "assistant";
+  const isAssistant = messageRole === "assistant";
 
   return (
     <div

@@ -31,14 +31,14 @@ export function ChatMessageList({
         {messages.map((message, index) => (
           <ChatMessage
             key={index}
-            role={message.role}
+            messageRole={message.role}
             content={message.content}
             executionEvent={message.executionEvent}
           />
         ))}
         {streamingContent && (
           <ChatMessage
-            role="assistant"
+            messageRole="assistant"
             content={streamingContent}
             isStreaming
           />

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { MoreVertical, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Session } from "@/types/api";
@@ -8,6 +9,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface SessionListItemProps {
   session: Session;
@@ -28,10 +39,14 @@ export function SessionListItem({
   onSelect,
   onDelete,
 }: SessionListItemProps) {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
   return (
-    <div
+    <>
+    <button
+      type="button"
       className={cn(
-        "group flex items-center gap-2 rounded-md p-2 cursor-pointer transition-colors",
+        "group flex w-full items-center gap-2 rounded-md p-2 text-left transition-colors",
         isActive
           ? "bg-accent text-accent-foreground"
           : "hover:bg-accent/50"
@@ -67,7 +82,7 @@ export function SessionListItem({
             className="text-destructive"
             onClick={(e) => {
               e.stopPropagation();
-              onDelete();
+              setShowDeleteConfirm(true);
             }}
           >
             <Trash2 className="h-4 w-4 mr-2" />
@@ -75,6 +90,28 @@ export function SessionListItem({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-    </div>
+    </button>
+
+    <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Session?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will permanently delete the session and all its tasks, messages, and artifacts.
+            This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={onDelete}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

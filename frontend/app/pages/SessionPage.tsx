@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, FileText } from "lucide-react";
 import { api } from "@/services/api";
 import { useSSE } from "@/hooks/useSSE";
 import type {
@@ -12,14 +11,10 @@ import type {
   ArtifactSummary,
   ArtifactType,
 } from "@/types/api";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { ChatMessageList, type ChatMessageItem } from "@/components/chat/ChatMessageList";
-import { TaskList } from "@/components/session/TaskList";
-import { ExecuteButton } from "@/components/session/ExecuteButton";
 import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
-import { ArtifactSidebar } from "@/components/layout/ArtifactSidebar";
+import { RightSidebar } from "@/components/layout/RightSidebar";
 import { ArtifactModal } from "@/components/artifacts/ArtifactModal";
 
 export function SessionPage() {
@@ -40,8 +35,7 @@ export function SessionPage() {
   // Execution state
   const [isExecuting, setIsExecuting] = useState(false);
 
-  // Artifact sidebar state
-  const [isArtifactSidebarCollapsed, setIsArtifactSidebarCollapsed] = useState(true);
+  // Artifact modal state
   const [selectedArtifactId, setSelectedArtifactId] = useState<string | null>(null);
 
   // Reference to tasks for execution event handler
@@ -165,8 +159,6 @@ export function SessionPage() {
             createdAt: new Date().toISOString(),
           };
           setArtifacts((prev) => [...prev, newArtifact]);
-          // Auto-expand sidebar when artifact is created
-          setIsArtifactSidebarCollapsed(false);
           break;
         }
         case "done":
@@ -195,10 +187,6 @@ export function SessionPage() {
       setMessages(sessionData.messages);
       setTasks(sessionData.tasks);
       setArtifacts(sessionData.artifacts);
-      // Auto-expand sidebar if there are artifacts
-      if (sessionData.artifacts.length > 0) {
-        setIsArtifactSidebarCollapsed(false);
-      }
     } catch (error) {
       console.error("Failed to load session:", error);
       navigate("/");
@@ -245,10 +233,6 @@ export function SessionPage() {
     connectExecution(executeUrl, {});
   };
 
-  const handleToggleArtifactSidebar = () => {
-    setIsArtifactSidebarCollapsed((prev) => !prev);
-  };
-
   const handleSelectArtifact = (artifactId: string) => {
     setSelectedArtifactId(artifactId);
   };
@@ -272,41 +256,24 @@ export function SessionPage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex h-full items-center justify-center">
         <LoadingIndicator size="lg" text="Loading session..." />
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-full overflow-hidden">
       {/* Chat Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 min-w-0 flex flex-col">
         {/* Header */}
         <header className="flex items-center gap-4 p-4 border-b border-border bg-card">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
           <div className="flex-1">
             <h1 className="text-lg font-semibold truncate">
               {session?.title || "New Session"}
             </h1>
             <p className="text-xs text-muted-foreground">{session?.status}</p>
           </div>
-          {/* Artifact toggle button in header when sidebar is collapsed */}
-          {isArtifactSidebarCollapsed && artifacts.length > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleToggleArtifactSidebar}
-              className="flex items-center gap-2"
-            >
-              <FileText className="h-4 w-4" />
-              <Badge variant="secondary" className="text-xs">
-                {artifacts.length}
-              </Badge>
-            </Button>
-          )}
         </header>
 
         {/* Messages */}
@@ -329,35 +296,17 @@ export function SessionPage() {
         />
       </div>
 
-      {/* Right Panel - Tasks */}
-      <aside className="w-96 border-l border-border bg-card flex flex-col">
-        {/* Task List */}
-        <div className="flex-1">
-          <TaskList tasks={tasks} />
-        </div>
-
-        {/* Execute Button */}
-        {tasks.length > 0 && session?.status !== "completed" && (
-          <div className="p-4 border-t border-border">
-            <ExecuteButton
-              onClick={handleExecute}
-              disabled={!canExecute}
-              isExecuting={isExecuting}
-              pendingTaskCount={pendingTaskCount}
-            />
-          </div>
-        )}
-      </aside>
-
-      {/* Artifact Sidebar */}
-      <aside className={isArtifactSidebarCollapsed ? "w-12" : "w-72"}>
-        <ArtifactSidebar
-          artifacts={artifacts}
-          isCollapsed={isArtifactSidebarCollapsed}
-          onToggle={handleToggleArtifactSidebar}
-          onSelectArtifact={handleSelectArtifact}
-        />
-      </aside>
+      {/* Right Sidebar - Tasks & Artifacts */}
+      <RightSidebar
+        tasks={tasks}
+        artifacts={artifacts}
+        onSelectArtifact={handleSelectArtifact}
+        canExecute={canExecute}
+        isExecuting={isExecuting}
+        pendingTaskCount={pendingTaskCount}
+        onExecute={handleExecute}
+        showExecuteButton={session?.status !== "completed"}
+      />
 
       {/* Artifact Modal */}
       {selectedArtifactId && sessionId && (

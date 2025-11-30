@@ -200,16 +200,16 @@
 
 ### Stream A: Backend [US5]
 
-- [ ] T085 [US5] Add session listing with pagination in `backend/app/api/sessions.py`
-- [ ] T086 [US5] Add session detail endpoint (with tasks, messages, artifacts, data) in `backend/app/api/sessions.py`
-- [ ] T087 [US5] Ensure LangGraph checkpointer resumes correctly in `backend/app/services/agent_service.py`
+- [x] T085 [US5] Add session listing with pagination in `backend/app/api/sessions.py`
+- [x] T086 [US5] Add session detail endpoint (with tasks, messages, artifacts, data) in `backend/app/api/sessions.py`
+- [x] T087 [US5] Ensure LangGraph checkpointer resumes correctly in `backend/app/services/agent_service.py`
 
 ### Stream B: Frontend [US5]
 
-- [ ] T088 [US5] Update SessionSidebar to fetch and display all sessions in `frontend/app/components/layout/SessionSidebar.tsx`
-- [ ] T089 [US5] Add session navigation (click to switch) in `frontend/app/components/layout/SessionSidebar.tsx`
-- [ ] T090 [US5] Persist sidebar collapse state to localStorage in `frontend/app/hooks/useSidebarState.ts`
-- [ ] T091 [US5] Add delete session functionality with confirmation in `frontend/app/components/session/SessionListItem.tsx`
+- [x] T088 [US5] Update SessionSidebar to fetch and display all sessions in `frontend/app/components/layout/SessionSidebar.tsx`
+- [x] T089 [US5] Add session navigation (click to switch) in `frontend/app/components/layout/SessionSidebar.tsx`
+- [x] T090 [US5] Persist sidebar collapse state to localStorage in `frontend/app/hooks/useSidebarState.ts`
+- [x] T091 [US5] Add delete session functionality with confirmation in `frontend/app/components/session/SessionListItem.tsx`
 
 **Checkpoint**: US5 complete - Full session persistence and navigation working
 
