@@ -4,6 +4,7 @@ from datetime import datetime
 from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
+from pydantic.alias_generators import to_camel
 
 
 class SessionStatus(str, Enum):
@@ -47,6 +48,7 @@ class BaseDBModel(BaseModel):
     model_config = ConfigDict(
         from_attributes=True,
         populate_by_name=True,
+        alias_generator=to_camel,
     )
 
 

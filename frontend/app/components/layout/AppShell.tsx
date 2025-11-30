@@ -22,7 +22,7 @@ export function AppShell({
       {leftSidebar && (
         <aside
           className={cn(
-            "flex-shrink-0 border-r border-border bg-card transition-all duration-300",
+            "relative z-20 flex-shrink-0 border-r border-border bg-card transition-all duration-300",
             isLeftCollapsed ? "w-12" : "w-64"
           )}
         >
@@ -31,7 +31,7 @@ export function AppShell({
       )}
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto">{children}</main>
+      <main className="relative z-10 flex-1 overflow-auto">{children}</main>
 
       {/* Right Sidebar */}
       {rightSidebar && (
