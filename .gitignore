@@ -1,5 +1,5 @@
 # Dependencies
-node_modules/
+node_modules
 .pnpm-store/
 
 # Build outputs
@@ -40,3 +40,9 @@ htmlcov/
 
 # Supabase
 supabase/.temp/
+
+# MCP state
+.libra-mcp-state.json
+
+# TypeScript build info
+*.tsbuildinfo

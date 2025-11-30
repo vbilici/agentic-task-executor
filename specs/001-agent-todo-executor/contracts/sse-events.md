@@ -2,13 +2,28 @@
 
 This document describes the Server-Sent Events (SSE) payloads for real-time streaming.
 
+## Implementation Architecture
+
+The backend uses LangGraph's `astream_events(version="v2")` API to capture events from the planning graph execution. The graph has two nodes:
+
+1. **chat node**: Generates conversational response (streamed to frontend)
+2. **extract_tasks node**: Extracts structured TODO list using `with_structured_output()` (not streamed)
+
+Event filtering in `agent_service.py` ensures only relevant events reach the frontend:
+- `on_chat_model_stream` events from "chat" node → `content` events
+- `on_chain_end` events from "extract_tasks" node → `tasks_updated` events
+
+The frontend uses React refs (`optionsRef`, `streamingContentRef`) to prevent re-render loops during async event handling.
+
 ## Chat Streaming Events
 
 **Endpoint**: `POST /sessions/{sessionId}/chat`
 
+**Flow**: User message → [LangGraph execution] → Stream events → Save to DB → Send final events
+
 ### Event: `content`
 
-Streamed text content from the assistant.
+Streamed text content from the assistant's conversational response (from chat node).
 
 ```json
 {
@@ -17,9 +32,13 @@ Streamed text content from the assistant.
 }
 ```
 
+**Timing**: Emitted continuously during chat node execution
+**Source**: `on_chat_model_stream` events where `node_name == "chat"`
+**Frontend handling**: Accumulated in `streamingContent` state, displayed in real-time
+
 ### Event: `tasks_updated`
 
-Task list has been updated (new tasks created or existing modified).
+Task list has been updated (new tasks created). Sent AFTER tasks are saved to database.
 
 ```json
 {
@@ -30,11 +49,18 @@ Task list has been updated (new tasks created or existing modified).
       "title": "Research competitors",
       "description": "Find top 5 competitors in the CRM market",
       "status": "pending",
-      "order": 0
+      "order": 0,
+      "sessionId": "uuid",
+      "createdAt": "2025-11-30T12:00:00Z"
     }
   ]
 }
 ```
+
+**Timing**: Emitted once after graph execution completes AND tasks saved to database
+**Source**: `on_chain_end` events from extract_tasks node → database insertion → event sent with DB records
+**Frontend handling**: Updates task list with full task objects including database IDs
+**Note**: Tasks include database IDs because they're sent after DB insertion completes
 
 ### Event: `error`
 
@@ -47,15 +73,24 @@ An error occurred during chat processing.
 }
 ```
 
+**Timing**: Emitted when exceptions occur during graph execution or database operations
+**Frontend handling**: Logged to console, resets `isSending` state
+
 ### Event: `done`
 
-Chat response completed.
+Chat response completed. All processing finished.
 
 ```json
 {
   "type": "done"
 }
 ```
+
+**Timing**: Emitted after all processing completes (message saved, tasks saved if any)
+**Frontend handling**:
+- Creates final message object from accumulated streaming content
+- Resets `streamingContent` to empty string
+- Sets `isSending` to false
 
 ## Execution Streaming Events
 
@@ -335,3 +370,116 @@ type ExecutionEvent =
   | ExecutionErrorEvent
   | ExecutionDoneEvent;
 ```
+
+## Frontend Implementation: React Ref Pattern
+
+The frontend uses React refs to prevent infinite re-render loops during SSE streaming. This is a critical architectural decision for reliable real-time updates.
+
+### The Problem
+
+Without refs, this common pattern causes infinite loops:
+
+```typescript
+// ❌ BROKEN: Creates infinite loop
+const { connect } = useSSE<ChatEvent>({
+  onMessage: (event) => {
+    if (event.type === "content") {
+      setStreamingContent(prev => prev + event.content);  // Updates state
+    }
+    if (event.type === "done") {
+      // Need access to streamingContent here, but...
+      setMessages(prev => [...prev, { content: streamingContent }]);
+    }
+  }
+});
+
+// Adding streamingContent to dependencies restarts connection!
+const handleSend = (message: string) => {
+  connect(url, { message });  // Depends on onMessage callback
+};
+```
+
+**Why it loops**:
+1. `streamingContent` changes → triggers re-render
+2. `onMessage` callback recreated with new closure
+3. `connect()` sees new callback → recreates connection
+4. Stream starts over → infinite loop
+
+### The Solution: Refs
+
+```typescript
+// ✅ CORRECT: Use refs to break the loop
+const streamingContentRef = useRef("");
+
+useEffect(() => {
+  streamingContentRef.current = streamingContent;
+}, [streamingContent]);
+
+const { connect } = useSSE<ChatEvent>({
+  onMessage: useCallback((event) => {
+    if (event.type === "content") {
+      setStreamingContent(prev => prev + event.content);
+    }
+    if (event.type === "done") {
+      // Access latest value via ref (no dependency!)
+      const finalContent = streamingContentRef.current;
+      setMessages(prev => [...prev, { content: finalContent }]);
+    }
+  }, []),  // Empty dependencies - callback never recreated
+});
+```
+
+### How It Works
+
+**In `useSSE.ts`**:
+```typescript
+const optionsRef = useRef(options);
+
+useEffect(() => {
+  optionsRef.current = options;  // Update ref (no re-render)
+}, [options]);
+
+// Use ref in event handler (always has latest callbacks)
+optionsRef.current.onMessage?.(parsed);
+```
+
+**In `SessionPage.tsx`**:
+```typescript
+const streamingContentRef = useRef("");
+
+useEffect(() => {
+  streamingContentRef.current = streamingContent;
+}, [streamingContent]);
+
+const { connect } = useSSE<ChatEvent>({
+  onMessage: useCallback((event: ChatEvent) => {
+    switch (event.type) {
+      case "content":
+        setStreamingContent(prev => prev + event.content);
+        break;
+      case "done":
+        // Use ref to access latest streaming content
+        const finalContent = event.content || streamingContentRef.current;
+        setMessages(prev => [...prev, { content: finalContent }]);
+        break;
+    }
+  }, []),  // sessionId removed - no dependencies needed
+});
+```
+
+### Why This Pattern?
+
+1. **Prevents Re-renders**: Updating refs doesn't trigger component re-renders
+2. **Stable Callbacks**: `onMessage` with `[]` dependencies never recreates
+3. **Latest State Access**: Refs always contain current values
+4. **No Stale Closures**: Event handlers see fresh state via refs
+5. **Connection Stability**: SSE connection stays open without restarting
+
+### Key Rules
+
+1. **Store callbacks in refs**: `optionsRef.current = options`
+2. **Empty dependency arrays**: `useCallback(() => {...}, [])`
+3. **Sync state to refs**: `useEffect(() => { ref.current = state }, [state])`
+4. **Access via refs in handlers**: `ref.current.onMessage?.(event)`
+
+This pattern is essential for any React component handling long-lived async operations (SSE, WebSockets, etc.) where event handlers need access to current state without recreating the connection.

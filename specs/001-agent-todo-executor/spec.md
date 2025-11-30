@@ -117,6 +117,8 @@ Users can have a back-and-forth conversation with the agent to refine their goal
 1. **Given** a user has received an initial TODO list, **When** they send a follow-up message, **Then** the agent updates the task list accordingly.
 2. **Given** a conversation is in progress, **When** the agent responds, **Then** the response streams in real-time.
 
+**Implementation Note**: The planning agent uses a two-node graph architecture where the chat node handles conversational responses (streamed to the user) and a separate extract_tasks node uses structured output to reliably extract TODO items from the conversation. This separation ensures users see natural conversation while the system cleanly extracts structured task data in the background.
+
 ---
 
 ### Edge Cases
@@ -147,9 +149,10 @@ Users can have a back-and-forth conversation with the agent to refine their goal
 - **FR-006**: System MUST allow users to delete sessions (cascading to tasks, artifacts, and data items)
 
 **Task Planning**
-- **FR-007**: System MUST generate a structured TODO list (3-10 tasks) from a user's goal description
+- **FR-007**: System MUST generate a structured TODO list (3-10 tasks) from a user's goal description using structured output extraction
 - **FR-008**: System MUST display each task with title, description (optional), and status
-- **FR-009**: System MUST allow streaming chat responses during planning conversation
+- **FR-009**: System MUST allow streaming chat responses during planning conversation (using SSE)
+- **FR-009a**: System MUST use React refs to prevent re-render loops during SSE streaming (implementation detail: `optionsRef` and `streamingContentRef` pattern)
 
 **Task Execution**
 - **FR-010**: System MUST allow users to trigger task execution after planning

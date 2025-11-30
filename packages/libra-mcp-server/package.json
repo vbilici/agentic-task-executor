@@ -1,0 +1,37 @@
+{
+  "name": "libra-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for managing Libra development services and logs.",
+  "type": "module",
+  "main": "dist/server.js",
+  "bin": {
+    "libra-dev-mcp": "./dist/server.js"
+  },
+  "scripts": {
+    "dev": "tsx src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "oxfmt ./src",
+    "format:check": "oxfmt ./src --check"
+  },
+  "keywords": [
+    "mcp",
+    "libra",
+    "debug",
+    "devtool"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.23.0",
+    "chalk": "^5.4.1",
+    "execa": "^9.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.3",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3"
+  }
+}

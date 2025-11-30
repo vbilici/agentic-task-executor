@@ -20,17 +20,17 @@
 
 ### Stream A: Backend Setup
 
-- [ ] T001 [P] Create backend directory structure per plan.md in `backend/`
-- [ ] T002 [P] Initialize Python 3.13 project with pyproject.toml in `backend/pyproject.toml`
-- [ ] T003 [P] Configure ruff linter and mypy in `backend/pyproject.toml`
-- [ ] T004 [P] Create .env.example with required variables in `backend/.env.example`
+- [x] T001 [P] Create backend directory structure per plan.md in `backend/`
+- [x] T002 [P] Initialize Python 3.13 project with pyproject.toml in `backend/pyproject.toml`
+- [x] T003 [P] Configure ruff linter and mypy in `backend/pyproject.toml`
+- [x] T004 [P] Create .env.example with required variables in `backend/.env.example`
 
 ### Stream B: Frontend Setup
 
-- [ ] T005 [P] Create Vite + React + TypeScript project in `frontend/`
+- [x] T005 [P] Create Vite + React + TypeScript project in `frontend/`
 - [ ] T006 [P] Initialize shadcn/ui using CLI: `pnpm dlx shadcn@latest init` in `frontend/`
-- [ ] T007 [P] Configure TypeScript strict mode in `frontend/tsconfig.json`
-- [ ] T008 [P] Create .env.example with VITE_API_URL in `frontend/.env.example`
+- [x] T007 [P] Configure TypeScript strict mode in `frontend/tsconfig.json`
+- [x] T008 [P] Create .env.example with VITE_API_URL in `frontend/.env.example`
 
 **Checkpoint**: Both backend and frontend project scaffolds ready
 
@@ -44,29 +44,29 @@
 
 ### Stream A: Backend Foundation
 
-- [ ] T009 [P] Create database config and Supabase client in `backend/app/core/database.py`
-- [ ] T010 [P] Create app config with environment loading in `backend/app/core/config.py`
-- [ ] T011 [P] Create base Pydantic models (enums, base classes) in `backend/app/models/base.py`
-- [ ] T012 [P] Create Session model in `backend/app/models/session.py`
-- [ ] T013 [P] Create Task model in `backend/app/models/task.py`
-- [ ] T014 [P] Create Message model in `backend/app/models/message.py`
-- [ ] T015 [P] Create Artifact model in `backend/app/models/artifact.py`
-- [ ] T016 [P] Create DataItem model in `backend/app/models/data_item.py`
-- [ ] T017 Create FastAPI app with CORS in `backend/app/main.py` (depends on T009, T010)
-- [ ] T018 Create health check endpoint in `backend/app/api/health.py`
-- [ ] T019 [P] Create SQL migration file for all tables in `backend/migrations/001_initial.sql`
+- [x] T009 [P] Create database config and Supabase client in `backend/app/core/database.py`
+- [x] T010 [P] Create app config with environment loading in `backend/app/core/config.py`
+- [x] T011 [P] Create base Pydantic models (enums, base classes) in `backend/app/models/base.py`
+- [x] T012 [P] Create Session model in `backend/app/models/session.py`
+- [x] T013 [P] Create Task model in `backend/app/models/task.py`
+- [x] T014 [P] Create Message model in `backend/app/models/message.py`
+- [x] T015 [P] Create Artifact model in `backend/app/models/artifact.py`
+- [x] T016 [P] Create DataItem model in `backend/app/models/data_item.py`
+- [x] T017 Create FastAPI app with CORS in `backend/app/main.py` (depends on T009, T010)
+- [x] T018 Create health check endpoint in `backend/app/api/health.py`
+- [x] T019 [P] Create SQL migration file for all tables in `backend/migrations/001_initial.sql`
 
 ### Stream B: Frontend Foundation
 
-- [ ] T020 [P] Create TypeScript types from OpenAPI spec in `frontend/app/types/api.ts`
-- [ ] T021 [P] Create API client service in `frontend/app/services/api.ts`
-- [ ] T022 [P] Create SSE handler hook in `frontend/app/hooks/useSSE.ts`
-- [ ] T023 [P] Create sidebar state hook in `frontend/app/hooks/useSidebarState.ts`
-- [ ] T024 [P] Create app shell layout component in `frontend/app/components/layout/AppShell.tsx`
-- [ ] T025 [P] Create left sidebar component (sessions) in `frontend/app/components/layout/SessionSidebar.tsx`
-- [ ] T026 [P] Create right sidebar component (artifacts) in `frontend/app/components/layout/ArtifactSidebar.tsx`
-- [ ] T027 [P] Setup React Router with Home and Session routes in `frontend/app/App.tsx`
-- [ ] T028 Install all shadcn/ui components via CLI in `frontend/`: `pnpm dlx shadcn@latest add button card dialog input scroll-area badge skeleton tooltip dropdown-menu separator sheet table alert-dialog toast`
+- [x] T020 [P] Create TypeScript types from OpenAPI spec in `frontend/src/types/api.ts`
+- [x] T021 [P] Create API client service in `frontend/src/services/api.ts`
+- [x] T022 [P] Create SSE handler hook in `frontend/src/hooks/useSSE.ts`
+- [x] T023 [P] Create sidebar state hook in `frontend/src/hooks/useSidebarState.ts`
+- [x] T024 [P] Create app shell layout component in `frontend/src/components/layout/AppShell.tsx`
+- [x] T025 [P] Create left sidebar component (sessions) in `frontend/src/components/layout/SessionSidebar.tsx`
+- [x] T026 [P] Create right sidebar component (artifacts) in `frontend/src/components/layout/ArtifactSidebar.tsx`
+- [x] T027 [P] Setup React Router with Home and Session routes in `frontend/src/App.tsx`
+- [x] T028 Install all shadcn/ui components via CLI in `frontend/`: `pnpm dlx shadcn@latest add button card dialog input scroll-area badge skeleton tooltip dropdown-menu separator sheet table alert-dialog toast`
 
 **Checkpoint**: Foundation ready - user story implementation can begin
 
@@ -80,30 +80,30 @@
 
 ### Stream A: Backend [US1]
 
-- [ ] T029 [P] [US1] Create SessionService (create, get, list, delete) in `backend/app/services/session_service.py`
-- [ ] T030 [P] [US1] Create TaskService (create, update, list by session) in `backend/app/services/task_service.py`
-- [ ] T031 [P] [US1] Create MessageService (create, list by session) in `backend/app/services/message_service.py`
-- [ ] T032 [US1] Create LangGraph agent state schema in `backend/app/agent/state.py` (depends on T011-T016)
-- [ ] T033 [US1] Create planning agent system prompt in `backend/app/agent/prompts.py`
-- [ ] T034 [US1] Create LangGraph planning graph in `backend/app/agent/graph.py` (depends on T032, T033)
-- [ ] T035 [US1] Create AgentService with checkpointer in `backend/app/services/agent_service.py` (depends on T034)
-- [ ] T036 [US1] Create sessions router (CRUD endpoints) in `backend/app/api/sessions.py` (depends on T029)
-- [ ] T037 [US1] Create chat SSE endpoint in `backend/app/api/chat.py` (depends on T035)
-- [ ] T038 [US1] Register routers in main.py `backend/app/main.py`
+- [x] T029 [P] [US1] Create SessionService (create, get, list, delete) in `backend/app/services/session_service.py`
+- [x] T030 [P] [US1] Create TaskService (create, update, list by session) in `backend/app/services/task_service.py`
+- [x] T031 [P] [US1] Create MessageService (create, list by session) in `backend/app/services/message_service.py`
+- [x] T032 [US1] Create LangGraph agent state schema in `backend/app/agent/state.py` (depends on T011-T016)
+- [x] T033 [US1] Create planning agent system prompt in `backend/app/agent/prompts.py`
+- [x] T034 [US1] Create LangGraph planning graph in `backend/app/agent/graph.py` (depends on T032, T033)
+- [x] T035 [US1] Create AgentService with checkpointer in `backend/app/services/agent_service.py` (depends on T034)
+- [x] T036 [US1] Create sessions router (CRUD endpoints) in `backend/app/api/sessions.py` (depends on T029)
+- [x] T037 [US1] Create chat SSE endpoint in `backend/app/api/chat.py` (depends on T035)
+- [x] T038 [US1] Register routers in main.py `backend/app/main.py`
 
 ### Stream B: Frontend [US1]
 
-- [ ] T039 [P] [US1] Create SessionList component in `frontend/app/components/session/SessionList.tsx`
-- [ ] T040 [P] [US1] Create SessionListItem component in `frontend/app/components/session/SessionListItem.tsx`
-- [ ] T041 [P] [US1] Create ChatInput component in `frontend/app/components/chat/ChatInput.tsx`
-- [ ] T042 [P] [US1] Create ChatMessage component in `frontend/app/components/chat/ChatMessage.tsx`
-- [ ] T043 [P] [US1] Create ChatMessageList component in `frontend/app/components/chat/ChatMessageList.tsx`
-- [ ] T044 [P] [US1] Create TaskList component in `frontend/app/components/session/TaskList.tsx`
-- [ ] T045 [P] [US1] Create TaskItem component in `frontend/app/components/session/TaskItem.tsx`
-- [ ] T046 [P] [US1] Create LoadingIndicator component in `frontend/app/components/ui/LoadingIndicator.tsx`
-- [ ] T047 [US1] Create Home page (new session button) in `frontend/app/pages/HomePage.tsx` (depends on T039-T040)
-- [ ] T048 [US1] Create Session page in `frontend/app/pages/SessionPage.tsx` (depends on T041-T046)
-- [ ] T049 [US1] Wire up chat SSE for streaming responses in `frontend/app/pages/SessionPage.tsx`
+- [x] T039 [P] [US1] Create SessionList component in `frontend/src/components/session/SessionList.tsx`
+- [x] T040 [P] [US1] Create SessionListItem component in `frontend/src/components/session/SessionListItem.tsx`
+- [x] T041 [P] [US1] Create ChatInput component in `frontend/src/components/chat/ChatInput.tsx`
+- [x] T042 [P] [US1] Create ChatMessage component in `frontend/src/components/chat/ChatMessage.tsx`
+- [x] T043 [P] [US1] Create ChatMessageList component in `frontend/src/components/chat/ChatMessageList.tsx`
+- [x] T044 [P] [US1] Create TaskList component in `frontend/src/components/session/TaskList.tsx`
+- [x] T045 [P] [US1] Create TaskItem component in `frontend/src/components/session/TaskItem.tsx`
+- [x] T046 [P] [US1] Create LoadingIndicator component in `frontend/src/components/ui/LoadingIndicator.tsx`
+- [x] T047 [US1] Create Home page (new session button) in `frontend/src/pages/HomePage.tsx` (depends on T039-T040)
+- [x] T048 [US1] Create Session page in `frontend/src/pages/SessionPage.tsx` (depends on T041-T046)
+- [x] T049 [US1] Wire up chat SSE for streaming responses in `frontend/src/pages/SessionPage.tsx`
 
 **Checkpoint**: US1 complete - Users can create sessions, describe goals, and see generated task lists
 
@@ -221,15 +221,17 @@
 
 **Independent Test**: Get initial tasks → Ask "Add budget planning task" → See updated list
 
+> **Note**: Basic chat refinement was implemented as part of US1. The planning graph uses LangGraph checkpointer for conversation continuity, and tasks are replaced on each response. This phase focuses on advanced task management.
+
 ### Stream A: Backend [US6]
 
-- [ ] T092 [US6] Update planning graph to handle follow-up messages in `backend/app/agent/graph.py`
-- [ ] T093 [US6] Add task update logic (add/remove/modify tasks) in `backend/app/services/task_service.py`
+- [x] T092 [US6] ~~Update planning graph to handle follow-up messages~~ Already implemented via two-node architecture with checkpointer persistence in `backend/app/agent/graph.py`
+- [ ] T093 [US6] Add task update logic (add/remove/modify individual tasks) in `backend/app/services/task_service.py`
 
 ### Stream B: Frontend [US6]
 
-- [ ] T094 [US6] Enable chat input after initial response in `frontend/app/pages/SessionPage.tsx`
-- [ ] T095 [US6] Handle tasks_updated SSE event in `frontend/app/pages/SessionPage.tsx`
+- [x] T094 [US6] ~~Enable chat input after initial response~~ Already implemented in `frontend/app/pages/SessionPage.tsx`
+- [x] T095 [US6] ~~Handle tasks_updated SSE event~~ Already implemented in `frontend/app/pages/SessionPage.tsx`
 
 **Checkpoint**: US6 complete - Full conversational planning flow working
 
