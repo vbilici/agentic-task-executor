@@ -43,15 +43,22 @@ export function SessionListItem({
 
   return (
     <>
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       className={cn(
-        "group flex w-full items-center gap-2 rounded-md p-2 text-left transition-colors",
+        "group flex w-full items-center gap-2 rounded-md p-2 text-left transition-colors cursor-pointer",
         isActive
           ? "bg-accent text-accent-foreground"
           : "hover:bg-accent/50"
       )}
       onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
     >
       <div
         className={cn(
@@ -90,7 +97,7 @@ export function SessionListItem({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-    </button>
+    </div>
 
     <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
       <AlertDialogContent>
