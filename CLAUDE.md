@@ -199,4 +199,32 @@ Design documents are in `specs/001-agent-todo-executor/`:
 - `contracts/` - API contracts (OpenAPI, SSE events)
 
 <!-- MANUAL ADDITIONS START -->
+
+## Test Development
+
+**IMPORTANT**: All test creation, editing, and fixing operations MUST be delegated to specialized test agents:
+
+| Agent | Purpose | Location |
+|-------|---------|----------|
+| `backend-test-dev` | Python tests (pytest, FastAPI, LangGraph, Pydantic) | `.claude/agents/backend-test-dev.md` |
+| `frontend-test-dev` | TypeScript tests (Vitest, React Testing Library) | `.claude/agents/frontend-test-dev.md` |
+
+### When to Delegate
+
+- Writing new tests for features or bug fixes
+- Updating tests after code refactoring
+- Fixing failing tests
+- Adding test coverage for existing code
+- Creating integration tests
+
+### How to Delegate
+
+Use the Task tool to launch the appropriate agent:
+```
+Task(subagent_type="backend-test-dev", prompt="Write tests for...")
+Task(subagent_type="frontend-test-dev", prompt="Create tests for...")
+```
+
+**Never write tests directly** - always delegate to the specialized agent for the relevant stack.
+
 <!-- MANUAL ADDITIONS END -->

@@ -211,7 +211,8 @@ Before completing any feature:
 ## When to Escalate
 
 - Frontend implementation → delegate to frontend-dev agent
-- Database schema changes → update Supabase migrations directly
+- Database schema changes → delegate to database-ops agent
 - LangGraph checkpoint issues → check LangGraph docs
+- **Test creation/editing/fixing → delegate to backend-test-dev agent**
 
 You are focused on building a clean, async-first, type-safe backend that enables real-time agent execution visibility.

@@ -1,21 +1,23 @@
 <!--
   Sync Impact Report
   ==================
-  Version change: 1.0.1 → 1.0.2 (PATCH - simplify frontend stack)
+  Version change: 1.0.2 → 1.1.0 (MINOR - new principle added)
 
   Modified sections:
-    - Development Standards/Frontend: Changed from Next.js to Vite + React
-      (no SSR needed for single-page chat app)
+    - Testing section under Development Standards: Expanded with agent delegation rules
+    - Quality Gates: Added test verification gate
 
-  Added sections: None
+  Added sections:
+    - Principle VI: Test-Driven Development (TDD)
 
   Removed sections: None
 
   Templates requiring updates:
-    - .specify/templates/plan-template.md: No changes required
-    - .specify/templates/spec-template.md: No changes required
-    - .specify/templates/tasks-template.md: No changes required
-    - .specify/templates/checklist-template.md: No changes required
+    - .specify/templates/plan-template.md: ✅ Updated (added Principle VI to Constitution Check table)
+    - .specify/templates/spec-template.md: ✅ No changes required
+    - .specify/templates/tasks-template.md: ✅ No changes required (already includes test
+      task patterns)
+    - .specify/templates/checklist-template.md: ✅ No changes required
 
   Follow-up TODOs: None
 -->
@@ -94,6 +96,28 @@ Start with the simplest solution that works. Add complexity only when proven nec
 **Rationale**: This is a focused product with a clear scope. Over-engineering slows
 iteration and obscures the core value. Build what's needed today.
 
+### VI. Test-Driven Development (TDD)
+
+All test creation, editing, and execution MUST be delegated to specialized test agents
+using MCP tools for verification.
+
+- **Test Agent Delegation**: All test-related tasks MUST be delegated to the appropriate agent:
+  - Backend tests (Python/pytest): Use `.claude/agents/backend-test-dev.md` agent
+  - Frontend tests (TypeScript/Vitest): Use `.claude/agents/frontend-test-dev.md` agent
+- **MCP Tool Verification**: Tests MUST be executed using dedicated MCP tools:
+  - Backend: Use `backend-test` MCP service
+  - Frontend: Use `frontend-test` MCP service
+- **TDD Workflow**: When tests are requested:
+  1. Write tests FIRST (they MUST fail initially)
+  2. Implement code to make tests pass
+  3. Refactor while keeping tests green
+- **Never Run Tests Manually**: Direct test commands (e.g., `pytest`, `vitest`, `pnpm test`)
+  MUST NOT be used - always use MCP tools through the specialized agents
+
+**Rationale**: Specialized test agents maintain consistent testing patterns, enforce best
+practices, and ensure tests are properly verified through MCP tooling. This separation
+of concerns improves test quality and maintainability while enabling efficient TDD workflows.
+
 ## Development Standards
 
 ### Backend (FastAPI + LangGraph)
@@ -114,10 +138,26 @@ iteration and obscures the core value. Build what's needed today.
 
 ### Testing
 
-- Tests are written when explicitly requested in feature specifications
-- Contract tests verify API schemas match between frontend and backend
-- Integration tests cover critical user journeys end-to-end
-- Unit tests for complex business logic only (not for simple CRUD)
+Testing follows Principle VI (Test-Driven Development) with mandatory agent delegation:
+
+- **Backend Tests**: Delegate to `backend-test-dev` agent (`.claude/agents/backend-test-dev.md`)
+  - Uses pytest with pytest-asyncio
+  - Verify via `backend-test` MCP tool
+  - Test categories: unit, integration, API endpoint, LangGraph workflow, Pydantic model
+- **Frontend Tests**: Delegate to `frontend-test-dev` agent (`.claude/agents/frontend-test-dev.md`)
+  - Uses Vitest with React Testing Library
+  - Verify via `frontend-test` MCP tool
+  - Test categories: component, hook, utility, integration, snapshot
+- **When to Write Tests**:
+  - When explicitly requested in feature specifications
+  - Contract tests verify API schemas match between frontend and backend
+  - Integration tests cover critical user journeys end-to-end
+  - Unit tests for complex business logic only (not for simple CRUD)
+- **Test Verification Workflow**:
+  1. Agent writes tests following stack-specific conventions
+  2. Agent executes tests via MCP tool (NEVER manual commands)
+  3. Agent iterates until tests pass
+  4. Agent reports results with summary
 
 ## Quality Gates
 
@@ -125,9 +165,10 @@ Before any PR is merged, the following MUST pass:
 
 1. **Type Check**: `mypy` (backend) and `tsc --noEmit` (frontend) pass with zero errors
 2. **Lint**: Code passes configured linters without warnings
-3. **Tests**: All requested tests pass
-4. **Build**: Production build completes without errors
-5. **Constitution Compliance**: No violations of the five core principles
+3. **Tests**: All requested tests pass (verified via MCP tools)
+4. **Test Agent Verification**: Test creation/modification done through specialized agents
+5. **Build**: Production build completes without errors
+6. **Constitution Compliance**: No violations of the six core principles
 
 ## Governance
 
@@ -151,4 +192,4 @@ refer to these principles.
   with justification
 - Unjustified violations block PR approval
 
-**Version**: 1.0.2 | **Ratified**: 2025-11-28 | **Last Amended**: 2025-11-29
+**Version**: 1.1.0 | **Ratified**: 2025-11-28 | **Last Amended**: 2025-11-30

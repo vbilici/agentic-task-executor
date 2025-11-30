@@ -38,6 +38,7 @@
 | III. Strict Type Safety | [ ] Pass / [ ] N/A | Pydantic + TypeScript strict, no `any` |
 | IV. Clean API Contracts | [ ] Pass / [ ] N/A | OpenAPI docs, RESTful naming, typed errors |
 | V. Simplicity First | [ ] Pass / [ ] N/A | No premature abstraction, YAGNI |
+| VI. Test-Driven Development | [ ] Pass / [ ] N/A | Use test agents + MCP tools, TDD workflow |
 
 ## Project Structure
 

@@ -10,22 +10,22 @@ import { ApiManager } from "./api-manager.js";
 
 // Type definitions for tool arguments
 interface ServiceArgs {
-  service?: "frontend" | "backend";
+  service?: "frontend" | "backend" | "frontend-test" | "backend-test";
 }
 
 interface ServiceLogsArgs {
-  service?: "frontend" | "backend";
+  service?: "frontend" | "backend" | "frontend-test" | "backend-test";
   lines?: number;
 }
 
 interface SearchLogsArgs {
-  service?: "frontend" | "backend";
+  service?: "frontend" | "backend" | "frontend-test" | "backend-test";
   query?: string;
   case_sensitive?: boolean;
 }
 
 interface SendCommandArgs {
-  service?: "frontend" | "backend";
+  service?: "frontend" | "backend" | "frontend-test" | "backend-test";
   command?: string;
 }
 
@@ -68,7 +68,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         properties: {
           service: {
             type: "string",
-            enum: ["frontend", "backend"],
+            enum: ["frontend", "backend", "frontend-test", "backend-test"],
             description: "Which service to start",
           },
         },
@@ -83,7 +83,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         properties: {
           service: {
             type: "string",
-            enum: ["frontend", "backend"],
+            enum: ["frontend", "backend", "frontend-test", "backend-test"],
             description: "Which service to stop",
           },
         },
@@ -98,7 +98,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         properties: {
           service: {
             type: "string",
-            enum: ["frontend", "backend"],
+            enum: ["frontend", "backend", "frontend-test", "backend-test"],
             description: "Which service to restart",
           },
         },
@@ -114,7 +114,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         properties: {
           service: {
             type: "string",
-            enum: ["frontend", "backend"],
+            enum: ["frontend", "backend", "frontend-test", "backend-test"],
             description: "Which service to check",
           },
         },
@@ -139,7 +139,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         properties: {
           service: {
             type: "string",
-            enum: ["frontend", "backend"],
+            enum: ["frontend", "backend", "frontend-test", "backend-test"],
             description: "Which service logs to retrieve",
           },
           lines: {
@@ -160,7 +160,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         properties: {
           service: {
             type: "string",
-            enum: ["frontend", "backend"],
+            enum: ["frontend", "backend", "frontend-test", "backend-test"],
             description: "Which service logs to search",
           },
           query: {
@@ -185,7 +185,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         properties: {
           service: {
             type: "string",
-            enum: ["frontend", "backend"],
+            enum: ["frontend", "backend", "frontend-test", "backend-test"],
             description: "Which service logs to tail",
           },
           lines: {
@@ -205,7 +205,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         properties: {
           service: {
             type: "string",
-            enum: ["frontend", "backend"],
+            enum: ["frontend", "backend", "frontend-test", "backend-test"],
             description: "Which service to send command to",
           },
           command: {
@@ -225,7 +225,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         properties: {
           service: {
             type: "string",
-            enum: ["frontend", "backend"],
+            enum: ["frontend", "backend", "frontend-test", "backend-test"],
             description: "Which service window to focus",
           },
         },

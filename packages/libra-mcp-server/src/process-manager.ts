@@ -5,7 +5,7 @@ import * as path from "path";
 import chalk from "chalk";
 
 export interface ServiceConfig {
-  name: "frontend" | "backend";
+  name: "frontend" | "backend" | "frontend-test" | "backend-test";
   directory: string;
   command: string;
   args: string[];
@@ -45,6 +45,18 @@ export class ProcessManager {
       command: "uv",
       args: ["run", "fastapi", "dev"],
       port: 8000,
+    },
+    {
+      name: "frontend-test",
+      directory: "frontend",
+      command: "pnpm",
+      args: ["test:watch"],
+    },
+    {
+      name: "backend-test",
+      directory: "backend",
+      command: "uv",
+      args: ["run", "pytest-watcher", ".", "--", "-v", "--tb=short"],
     },
   ];
 
@@ -226,46 +238,78 @@ export class ProcessManager {
         };
       }
 
-      // Detect display configuration for window positioning
-      const displayConfig = await this.detectDisplayConfiguration();
-      const windowLayout = this.calculateWindowLayout(
-        serviceName,
-        displayConfig.bounds,
-        displayConfig.alignment,
-        displayConfig.unifiedMaxY
-      );
+      // Check if this is a test service (simpler window management)
+      const isTestService = serviceName.endsWith("-test");
 
-      console.log(
-        chalk.blue(`[ProcessManager]`),
-        `Using screen ${displayConfig.screenIndex} for ${serviceName}`
-      );
+      let result;
+      if (isTestService) {
+        // Test services: simple window creation without positioning
+        const windowTitle = `Libra ${serviceName}`;
+        result = await execa("osascript", [
+          "-e",
+          `tell application "iTerm2"
+            create window with default profile
+            set newWindow to current window
+            set windowId to id of newWindow
 
-      // Start the service in iTerm2
-      const result = await execa("osascript", [
-        "-e",
-        `tell application "iTerm2"
-          create window with default profile
-          set newWindow to current window
-          set windowId to id of newWindow
+            tell current session of newWindow
+              set name to "${windowTitle}"
 
-          tell current session of newWindow
-            set name to "Libra ${serviceName} (${config.port})"
+              write text "cd ${workingDirectory}"
+              delay 0.5
+              write text "echo 'Starting ${serviceName}...'"
+              delay 0.5
+              write text "${config.command} ${config.args.join(" ")}"
+            end tell
 
-            write text "cd ${workingDirectory}"
-            delay 0.5
-            write text "echo 'Starting ${serviceName} service...'"
-            delay 0.5
-            write text "${config.command} ${config.args.join(" ")}"
-          end tell
+            return windowId
+          end tell`,
+        ]);
+      } else {
+        // Dev services: detect display configuration for smart window positioning
+        const displayConfig = await this.detectDisplayConfiguration();
+        const windowLayout = this.calculateWindowLayout(
+          serviceName,
+          displayConfig.bounds,
+          displayConfig.alignment,
+          displayConfig.unifiedMaxY
+        );
 
-          -- Set window position and size using window ID for precision
-          tell window id windowId
-            set bounds to {${windowLayout.left}, ${windowLayout.top}, ${windowLayout.right}, ${windowLayout.bottom}}
-          end tell
+        console.log(
+          chalk.blue(`[ProcessManager]`),
+          `Using screen ${displayConfig.screenIndex} for ${serviceName}`
+        );
 
-          return windowId
-        end tell`,
-      ]);
+        const windowTitle = config.port
+          ? `Libra ${serviceName} (${config.port})`
+          : `Libra ${serviceName}`;
+
+        result = await execa("osascript", [
+          "-e",
+          `tell application "iTerm2"
+            create window with default profile
+            set newWindow to current window
+            set windowId to id of newWindow
+
+            tell current session of newWindow
+              set name to "${windowTitle}"
+
+              write text "cd ${workingDirectory}"
+              delay 0.5
+              write text "echo 'Starting ${serviceName} service...'"
+              delay 0.5
+              write text "${config.command} ${config.args.join(" ")}"
+            end tell
+
+            -- Set window position and size using window ID for precision
+            tell window id windowId
+              set bounds to {${windowLayout.left}, ${windowLayout.top}, ${windowLayout.right}, ${windowLayout.bottom}}
+            end tell
+
+            return windowId
+          end tell`,
+        ]);
+      }
 
       // Store the window ID for future control
       state.itermWindowId = result.stdout.trim();
@@ -1163,6 +1207,12 @@ export class ProcessManager {
     } else if (serviceName === "frontend") {
       // Frontend uses: pnpm dev
       expectedPatterns = ["pnpm dev", "pnpm"];
+    } else if (serviceName === "backend-test") {
+      // Backend test uses: uv run pytest-watcher
+      expectedPatterns = ["pytest-watcher", "pytest", "ptw"];
+    } else if (serviceName === "frontend-test") {
+      // Frontend test uses: pnpm test:watch (vitest)
+      expectedPatterns = ["vitest", "test:watch"];
     } else {
       console.warn(
         chalk.yellow(`[ProcessManager]`),
