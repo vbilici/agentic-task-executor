@@ -43,6 +43,10 @@ async def execute_tasks(session_id: UUID) -> StreamingResponse:
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
+    # Block execution on completed sessions
+    if session.status == SessionStatus.COMPLETED:
+        raise HTTPException(status_code=400, detail="Session is already completed")
+
     # Get pending tasks
     pending_tasks = await task_service.get_pending_tasks(session_id)
     if not pending_tasks:

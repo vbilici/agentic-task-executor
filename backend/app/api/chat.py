@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from app.models.base import SessionStatus
 from app.services.agent_service import agent_service
 from app.services.session_service import session_service
 from app.services.task_service import task_service
@@ -30,6 +31,12 @@ async def chat(session_id: UUID, request: ChatRequest) -> StreamingResponse:
     session = await session_service.get(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
+
+    # Block chat on completed sessions
+    if session.status == SessionStatus.COMPLETED:
+        raise HTTPException(
+            status_code=400, detail="Session is completed and cannot be modified"
+        )
 
     # Update session title if it's the first message
     if session.title == "New Session":

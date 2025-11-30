@@ -353,7 +353,7 @@ export function SessionPage() {
           <div className="flex-1 flex items-center justify-center p-4">
             <ChatInput
               onSend={handleSendMessage}
-              disabled={isSending || isExecuting || isSummarizing}
+              disabled={isSending || isExecuting || isSummarizing || session?.status === "completed"}
               placeholder="Describe your goal..."
               className="w-full max-w-2xl border-t-0 rounded-lg border border-border"
             />
@@ -377,9 +377,11 @@ export function SessionPage() {
             <div className="absolute bottom-0 left-0 right-0">
               <ChatInput
                 onSend={handleSendMessage}
-                disabled={isSending || isExecuting || isSummarizing}
+                disabled={isSending || isExecuting || isSummarizing || session?.status === "completed"}
                 placeholder={
-                  isExecuting
+                  session?.status === "completed"
+                    ? "Session completed"
+                    : isExecuting
                     ? "Execution in progress..."
                     : isSummarizing
                     ? "Generating summary..."
