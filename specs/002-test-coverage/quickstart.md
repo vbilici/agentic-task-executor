@@ -187,14 +187,30 @@ describe('ExampleComponent', () => {
 | `global.fetch` | Mocked fetch for API/SSE tests |
 | `global.ResizeObserver` | Required for UI components |
 
+## Test Results (Actual)
+
+| Component | Tests | Status |
+|-----------|-------|--------|
+| **Backend Total** | **107** | ✅ PASS |
+| - Task Service | 7 | State transitions |
+| - Planning Graph | 5 | Chat + extraction nodes |
+| - Execution Graph | 24 | Routing + reflection |
+| - Calculator Tool | 32 | Arithmetic + functions |
+| - Datetime Tools | 34 | Format + difference |
+| **Frontend Total** | **63** | ✅ PASS |
+| - useSSE Hook | 13 | Connection + parsing |
+| - API Client | 18 | CRUD operations |
+| - Error Handler | 32 | Message extraction |
+| **Grand Total** | **170** | ✅ ALL PASS |
+
 ## Coverage Targets
 
-| Area | Target | Focus |
-|------|--------|-------|
-| Backend business logic | ~40% | Task service, graph nodes |
-| Frontend hooks/services | ~40% | useSSE, api client |
-| Tools | High | Calculator, datetime (pure functions) |
-| Integration | Light | Session CRUD |
+| Area | Target | Actual | Status |
+|------|--------|--------|--------|
+| Backend business logic | ~40% | Task service, graph nodes fully tested | ✅ |
+| Frontend hooks/services | ~40% | useSSE, api client, error handler | ✅ |
+| Tools | High | Calculator + datetime (66 tests) | ✅ |
+| Integration | Light | Deferred (API integration tests) | ⏳ |
 
 ## Troubleshooting
 

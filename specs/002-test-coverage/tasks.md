@@ -19,12 +19,12 @@
 
 **Purpose**: Configure test frameworks and shared fixtures for both backend and frontend
 
-- [ ] T001 Install backend test dependencies (pytest, pytest-asyncio, pytest-mock, httpx) via `uv add --dev` in backend/pyproject.toml
-- [ ] T002 [P] Install frontend test dependencies (@testing-library/react, @testing-library/jest-dom, @testing-library/user-event, jsdom) via `pnpm add -D` in frontend/package.json
-- [ ] T003 Configure pytest in backend/pyproject.toml with asyncio_mode="auto" and testpaths=["tests"]
-- [ ] T004 [P] Configure Vitest in frontend/vite.config.ts with jsdom environment and setupFiles
-- [ ] T005 Create backend/tests/ directory structure (conftest.py, unit/, integration/)
-- [ ] T006 [P] Create frontend/app/test/setup.ts with jest-dom matchers and global mocks
+- [X] T001 Install backend test dependencies (pytest, pytest-asyncio, pytest-mock, httpx) via `uv add --dev` in backend/pyproject.toml
+- [X] T002 [P] Install frontend test dependencies (@testing-library/react, @testing-library/jest-dom, @testing-library/user-event, jsdom) via `pnpm add -D` in frontend/package.json
+- [X] T003 Configure pytest in backend/pyproject.toml with asyncio_mode="auto" and testpaths=["tests"]
+- [X] T004 [P] Configure Vitest in frontend/vite.config.ts with jsdom environment and setupFiles
+- [X] T005 Create backend/tests/ directory structure (conftest.py, unit/, integration/)
+- [X] T006 [P] Create frontend/app/test/setup.ts with jest-dom matchers and global mocks
 
 ---
 
@@ -34,13 +34,13 @@
 
 **CRITICAL**: All user stories depend on these fixtures being in place first
 
-- [ ] T007 Create backend/tests/conftest.py with mock_supabase fixture (MagicMock with fluent API chaining)
-- [ ] T008 [P] Create mock_task_pending, mock_task_in_progress, mock_task_done fixtures in backend/tests/conftest.py
-- [ ] T009 [P] Create mock_session fixture in backend/tests/conftest.py
-- [ ] T010 [P] Create mock_chat_llm fixture with patched ChatOpenAI in backend/tests/conftest.py
-- [ ] T011 [P] Create mock_structured_llm fixture for task extraction in backend/tests/conftest.py
-- [ ] T012 Add global fetch mock to frontend/app/test/setup.ts
-- [ ] T013 [P] Add ResizeObserver mock to frontend/app/test/setup.ts
+- [X] T007 Create backend/tests/conftest.py with mock_supabase fixture (MagicMock with fluent API chaining)
+- [X] T008 [P] Create mock_task_pending, mock_task_in_progress, mock_task_done fixtures in backend/tests/conftest.py
+- [X] T009 [P] Create mock_session fixture in backend/tests/conftest.py
+- [X] T010 [P] Create mock_chat_llm fixture with patched ChatOpenAI in backend/tests/conftest.py
+- [X] T011 [P] Create mock_structured_llm fixture for task extraction in backend/tests/conftest.py
+- [X] T012 Add global fetch mock to frontend/app/test/setup.ts
+- [X] T013 [P] Add ResizeObserver mock to frontend/app/test/setup.ts
 
 **Checkpoint**: Test infrastructure ready - user story test implementation can begin
 
@@ -54,16 +54,16 @@
 
 ### Implementation for User Story 1
 
-- [ ] T014 [US1] Create backend/tests/unit/test_task_service.py file structure with TestTaskServiceStateTransitions class
-- [ ] T015 [P] [US1] Implement test_start_task_from_pending (pending → in_progress) in backend/tests/unit/test_task_service.py
-- [ ] T016 [P] [US1] Implement test_complete_task_from_in_progress (in_progress → done) in backend/tests/unit/test_task_service.py
-- [ ] T017 [P] [US1] Implement test_fail_task_from_in_progress (in_progress → failed) in backend/tests/unit/test_task_service.py
-- [ ] T018 [US1] Create TestTaskServiceErrors class in backend/tests/unit/test_task_service.py
-- [ ] T019 [P] [US1] Implement test_start_already_in_progress_raises (invalid transition) in backend/tests/unit/test_task_service.py
-- [ ] T020 [P] [US1] Implement test_complete_from_pending_raises (invalid transition) in backend/tests/unit/test_task_service.py
-- [ ] T021 [P] [US1] Implement test_modify_completed_task_raises (terminal state) in backend/tests/unit/test_task_service.py
-- [ ] T022 [US1] Create TestTaskServiceQueries class in backend/tests/unit/test_task_service.py
-- [ ] T023 [US1] Implement test_get_pending_tasks_ordered in backend/tests/unit/test_task_service.py
+- [X] T014 [US1] Create backend/tests/unit/test_task_service.py file structure with TestTaskServiceStateTransitions class
+- [X] T015 [P] [US1] Implement test_start_task_from_pending (pending → in_progress) in backend/tests/unit/test_task_service.py
+- [X] T016 [P] [US1] Implement test_complete_task_from_in_progress (in_progress → done) in backend/tests/unit/test_task_service.py
+- [X] T017 [P] [US1] Implement test_fail_task_from_in_progress (in_progress → failed) in backend/tests/unit/test_task_service.py
+- [X] T018 [US1] Create TestTaskServiceErrors class in backend/tests/unit/test_task_service.py
+- [X] T019 [P] [US1] Implement test_start_already_in_progress_raises (invalid transition) in backend/tests/unit/test_task_service.py
+- [X] T020 [P] [US1] Implement test_complete_from_pending_raises (invalid transition) in backend/tests/unit/test_task_service.py
+- [X] T021 [P] [US1] Implement test_modify_completed_task_raises (terminal state) in backend/tests/unit/test_task_service.py
+- [X] T022 [US1] Create TestTaskServiceQueries class in backend/tests/unit/test_task_service.py
+- [X] T023 [US1] Implement test_get_pending_tasks_ordered in backend/tests/unit/test_task_service.py
 
 **Checkpoint**: Task service state machine fully tested with valid/invalid transitions
 
@@ -77,17 +77,17 @@
 
 ### Implementation for User Story 2
 
-- [ ] T024 [US2] Create backend/tests/unit/test_planning_graph.py file structure
-- [ ] T025 [P] [US2] Implement test_chat_node_returns_ai_message in backend/tests/unit/test_planning_graph.py
-- [ ] T026 [P] [US2] Implement test_chat_node_uses_execution_summary_prompt in backend/tests/unit/test_planning_graph.py
-- [ ] T027 [US2] Create TestTaskExtraction class in backend/tests/unit/test_planning_graph.py
-- [ ] T028 [P] [US2] Implement test_extract_tasks_when_ready in backend/tests/unit/test_planning_graph.py
-- [ ] T029 [P] [US2] Implement test_extract_tasks_returns_empty_when_not_ready in backend/tests/unit/test_planning_graph.py
-- [ ] T030 [US2] Create backend/tests/unit/test_execution_graph.py file structure
-- [ ] T031 [P] [US2] Implement test_should_continue_returns_tools in backend/tests/unit/test_execution_graph.py
-- [ ] T032 [P] [US2] Implement test_should_continue_returns_reflect in backend/tests/unit/test_execution_graph.py
-- [ ] T033 [US2] Create TestReflectionNode class in backend/tests/unit/test_execution_graph.py
-- [ ] T034 [US2] Implement test_reflection_extracts_result in backend/tests/unit/test_execution_graph.py
+- [X] T024 [US2] Create backend/tests/unit/test_planning_graph.py file structure
+- [X] T025 [P] [US2] Implement test_chat_node_returns_ai_message in backend/tests/unit/test_planning_graph.py
+- [X] T026 [P] [US2] Implement test_chat_node_uses_execution_summary_prompt in backend/tests/unit/test_planning_graph.py
+- [X] T027 [US2] Create TestTaskExtraction class in backend/tests/unit/test_planning_graph.py
+- [X] T028 [P] [US2] Implement test_extract_tasks_when_ready in backend/tests/unit/test_planning_graph.py
+- [X] T029 [P] [US2] Implement test_extract_tasks_returns_empty_when_not_ready in backend/tests/unit/test_planning_graph.py
+- [X] T030 [US2] Create backend/tests/unit/test_execution_graph.py file structure
+- [X] T031 [P] [US2] Implement test_should_continue_returns_tools in backend/tests/unit/test_execution_graph.py
+- [X] T032 [P] [US2] Implement test_should_continue_returns_reflect in backend/tests/unit/test_execution_graph.py
+- [X] T033 [US2] Create TestReflectionNode class in backend/tests/unit/test_execution_graph.py
+- [X] T034 [US2] Implement test_reflection_extracts_result in backend/tests/unit/test_execution_graph.py
 
 **Checkpoint**: Planning and execution graph routing logic fully tested
 
@@ -101,15 +101,15 @@
 
 ### Implementation for User Story 3
 
-- [ ] T035 [US3] Create backend/tests/unit/tools/ directory
-- [ ] T036 [US3] Create backend/tests/unit/tools/test_calculator.py file structure
-- [ ] T037 [P] [US3] Implement test_calculator_basic_arithmetic in backend/tests/unit/tools/test_calculator.py
-- [ ] T038 [P] [US3] Implement test_calculator_precedence (2 + 3 * 4 = 14) in backend/tests/unit/tools/test_calculator.py
-- [ ] T039 [P] [US3] Implement test_calculator_functions (sqrt, pow) in backend/tests/unit/tools/test_calculator.py
-- [ ] T040 [P] [US3] Implement test_calculator_invalid_expression in backend/tests/unit/tools/test_calculator.py
-- [ ] T041 [US3] Create backend/tests/unit/tools/test_datetime.py file structure
-- [ ] T042 [P] [US3] Implement test_datetime_format_iso in backend/tests/unit/tools/test_datetime.py
-- [ ] T043 [P] [US3] Implement test_datetime_difference in backend/tests/unit/tools/test_datetime.py
+- [X] T035 [US3] Create backend/tests/unit/tools/ directory
+- [X] T036 [US3] Create backend/tests/unit/tools/test_calculator.py file structure
+- [X] T037 [P] [US3] Implement test_calculator_basic_arithmetic in backend/tests/unit/tools/test_calculator.py
+- [X] T038 [P] [US3] Implement test_calculator_precedence (2 + 3 * 4 = 14) in backend/tests/unit/tools/test_calculator.py
+- [X] T039 [P] [US3] Implement test_calculator_functions (sqrt, pow) in backend/tests/unit/tools/test_calculator.py
+- [X] T040 [P] [US3] Implement test_calculator_invalid_expression in backend/tests/unit/tools/test_calculator.py
+- [X] T041 [US3] Create backend/tests/unit/tools/test_datetime.py file structure
+- [X] T042 [P] [US3] Implement test_datetime_format_iso in backend/tests/unit/tools/test_datetime.py
+- [X] T043 [P] [US3] Implement test_datetime_difference in backend/tests/unit/tools/test_datetime.py
 
 **Checkpoint**: All tool functions tested with various inputs and edge cases
 
@@ -143,14 +143,14 @@
 
 ### Implementation for User Story 5
 
-- [ ] T051 [US5] Create frontend/app/hooks/useSSE.test.ts file structure
-- [ ] T052 [P] [US5] Implement test_connect_makes_fetch_request in frontend/app/hooks/useSSE.test.ts
-- [ ] T053 [P] [US5] Implement test_disconnect_aborts_connection in frontend/app/hooks/useSSE.test.ts
-- [ ] T054 [US5] Create SSE parsing tests describe block in frontend/app/hooks/useSSE.test.ts
-- [ ] T055 [P] [US5] Implement test_parses_single_event in frontend/app/hooks/useSSE.test.ts
-- [ ] T056 [P] [US5] Implement test_parses_multiple_events in frontend/app/hooks/useSSE.test.ts
-- [ ] T057 [US5] Create error handling tests describe block in frontend/app/hooks/useSSE.test.ts
-- [ ] T058 [US5] Implement test_connection_error_invokes_callback in frontend/app/hooks/useSSE.test.ts
+- [X] T051 [US5] Create frontend/app/hooks/useSSE.test.ts file structure
+- [X] T052 [P] [US5] Implement test_connect_makes_fetch_request in frontend/app/hooks/useSSE.test.ts
+- [X] T053 [P] [US5] Implement test_disconnect_aborts_connection in frontend/app/hooks/useSSE.test.ts
+- [X] T054 [US5] Create SSE parsing tests describe block in frontend/app/hooks/useSSE.test.ts
+- [X] T055 [P] [US5] Implement test_parses_single_event in frontend/app/hooks/useSSE.test.ts
+- [X] T056 [P] [US5] Implement test_parses_multiple_events in frontend/app/hooks/useSSE.test.ts
+- [X] T057 [US5] Create error handling tests describe block in frontend/app/hooks/useSSE.test.ts
+- [X] T058 [US5] Implement test_connection_error_invokes_callback in frontend/app/hooks/useSSE.test.ts
 
 **Checkpoint**: SSE hook connection, parsing, and error handling fully tested
 
@@ -164,14 +164,14 @@
 
 ### Implementation for User Story 6
 
-- [ ] T059 [US6] Create frontend/app/services/api.test.ts file structure
-- [ ] T060 [P] [US6] Implement test_listSessions_makes_get_request in frontend/app/services/api.test.ts
-- [ ] T061 [P] [US6] Implement test_createSession_makes_post_request in frontend/app/services/api.test.ts
-- [ ] T062 [P] [US6] Implement test_getSession_makes_get_with_id in frontend/app/services/api.test.ts
-- [ ] T063 [US6] Create frontend/app/lib/error-handler.test.ts file structure
-- [ ] T064 [P] [US6] Implement test_extracts_api_error_message in frontend/app/lib/error-handler.test.ts
-- [ ] T065 [P] [US6] Implement test_formats_generic_error in frontend/app/lib/error-handler.test.ts
-- [ ] T066 [US6] Implement test_returns_fallback_for_unknown_error in frontend/app/lib/error-handler.test.ts
+- [X] T059 [US6] Create frontend/app/services/api.test.ts file structure
+- [X] T060 [P] [US6] Implement test_listSessions_makes_get_request in frontend/app/services/api.test.ts
+- [X] T061 [P] [US6] Implement test_createSession_makes_post_request in frontend/app/services/api.test.ts
+- [X] T062 [P] [US6] Implement test_getSession_makes_get_with_id in frontend/app/services/api.test.ts
+- [X] T063 [US6] Create frontend/app/lib/error-handler.test.ts file structure
+- [X] T064 [P] [US6] Implement test_extracts_api_error_message in frontend/app/lib/error-handler.test.ts
+- [X] T065 [P] [US6] Implement test_formats_generic_error in frontend/app/lib/error-handler.test.ts
+- [X] T066 [US6] Implement test_returns_fallback_for_unknown_error in frontend/app/lib/error-handler.test.ts
 
 **Checkpoint**: API client and error utilities fully tested
 
@@ -181,10 +181,10 @@
 
 **Purpose**: Final validation and documentation
 
-- [ ] T067 Run full backend test suite using `backend-test` MCP tool (all tests in tests/)
-- [ ] T068 [P] Run full frontend test suite using `frontend-test` MCP tool (all tests)
-- [ ] T069 Verify all tests pass consistently (run 3x via MCP tools to detect flaky tests)
-- [ ] T070 Update quickstart.md with final test counts and coverage percentages
+- [X] T067 Run full backend test suite using `backend-test` MCP tool (all tests in tests/)
+- [X] T068 [P] Run full frontend test suite using `frontend-test` MCP tool (all tests)
+- [X] T069 Verify all tests pass consistently (run 3x via MCP tools to detect flaky tests)
+- [X] T070 Update quickstart.md with final test counts and coverage percentages
 
 ---
 
