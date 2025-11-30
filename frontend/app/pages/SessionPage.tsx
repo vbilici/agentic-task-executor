@@ -36,6 +36,10 @@ export function SessionPage() {
   // Execution state
   const [isExecuting, setIsExecuting] = useState(false);
 
+  // Execution log display state
+  const [isExecutionLogsExpanded, setIsExecutionLogsExpanded] = useState(false);
+  const [isDebugMode, setIsDebugMode] = useState(false);
+
   // Artifact modal state
   const [selectedArtifactId, setSelectedArtifactId] = useState<string | null>(null);
 
@@ -301,6 +305,10 @@ export function SessionPage() {
                 messages={messages}
                 streamingContent={streamingContent}
                 isExtractingTasks={isExtractingTasks}
+                isExecutionLogsExpanded={isExecutionLogsExpanded}
+                onToggleExecutionLogsExpanded={() => setIsExecutionLogsExpanded((prev) => !prev)}
+                isDebugMode={isDebugMode}
+                onToggleDebugMode={() => setIsDebugMode((prev) => !prev)}
               />
             </div>
 

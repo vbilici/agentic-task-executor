@@ -18,9 +18,10 @@ interface ChatMessageProps {
   content: string;
   isStreaming?: boolean;
   executionEvent?: ExecutionEventWithTitle;
+  compact?: boolean;
 }
 
-function ExecutionEventMessage({ event }: { event: ExecutionEventWithTitle }) {
+function ExecutionEventMessage({ event, compact = false }: { event: ExecutionEventWithTitle; compact?: boolean }) {
   const getEventConfig = () => {
     switch (event.type) {
       case "task_selected":
@@ -103,6 +104,23 @@ function ExecutionEventMessage({ event }: { event: ExecutionEventWithTitle }) {
   const config = getEventConfig();
   const Icon = config.icon;
 
+  // Compact mode: smaller padding, single line
+  if (compact) {
+    return (
+      <div className={cn("flex items-center gap-2 px-3 py-1.5 mx-2 my-0.5 rounded", config.bgColor)}>
+        <Icon className={cn("h-4 w-4 flex-shrink-0", config.iconColor)} />
+        <span className="text-xs font-medium text-muted-foreground">
+          {config.label}:
+        </span>
+        <span className="text-xs truncate flex-1 min-w-0">
+          {config.content && config.content.length > 100
+            ? `${config.content.slice(0, 100)}...`
+            : config.content}
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div className={cn("flex gap-3 p-3 rounded-lg mx-4 my-2", config.bgColor)}>
       <Icon className={cn("h-5 w-5 flex-shrink-0 mt-0.5", config.iconColor)} />
@@ -125,10 +143,11 @@ export function ChatMessage({
   content,
   isStreaming = false,
   executionEvent,
+  compact = false,
 }: ChatMessageProps) {
   // If this is an execution event, render it differently
   if (executionEvent) {
-    return <ExecutionEventMessage event={executionEvent} />;
+    return <ExecutionEventMessage event={executionEvent} compact={compact} />;
   }
 
   // System messages without execution events (like "Starting execution...")
