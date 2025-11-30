@@ -13,7 +13,6 @@ export interface SessionDetail extends Session {
   tasks: Task[];
   messages: Message[];
   artifacts: ArtifactSummary[];
-  dataItems: DataItem[];
 }
 
 // Task types
@@ -68,16 +67,6 @@ export interface ArtifactSummary {
   createdAt: string;
 }
 
-// DataItem types
-export interface DataItem {
-  id: string;
-  sessionId: string;
-  itemType: string;
-  data: Record<string, unknown>;
-  createdAt: string;
-  updatedAt: string;
-}
-
 // Chat SSE Event types
 export type ChatEventType = "content" | "tasks_extracting" | "tasks_updated" | "error" | "done";
 
@@ -120,7 +109,6 @@ export type ExecutionEventType =
   | "artifact_analysis_start"
   | "artifact_analysis_complete"
   | "artifact_created"
-  | "data_modified"
   | "task_completed"
   | "reflection"
   | "summary_creating"
@@ -164,14 +152,6 @@ export interface ArtifactCreatedEvent {
   artifactId: string;
   name: string;
   artifactType: ArtifactType;
-}
-
-export interface DataModifiedEvent {
-  type: "data_modified";
-  taskId: string;
-  dataItemId: string;
-  operation: "create" | "update" | "delete";
-  itemType: string;
 }
 
 export interface TaskCompletedEvent {
@@ -218,7 +198,6 @@ export type ExecutionEvent =
   | ArtifactAnalysisStartEvent
   | ArtifactAnalysisCompleteEvent
   | ArtifactCreatedEvent
-  | DataModifiedEvent
   | TaskCompletedEvent
   | ReflectionEvent
   | SummaryCreatingEvent
@@ -238,10 +217,6 @@ export interface TasksListResponse {
 
 export interface ArtifactsListResponse {
   artifacts: ArtifactSummary[];
-}
-
-export interface DataItemsListResponse {
-  dataItems: DataItem[];
 }
 
 // FastAPI returns errors in this format

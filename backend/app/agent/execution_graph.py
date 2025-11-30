@@ -452,7 +452,6 @@ Please complete this task using the available tools and the context from previou
         "current_task_id": task_id,
         "tasks": [task],
         "artifacts": [],
-        "data_items": [],
         "task_result": None,
         "task_reflection": None,
         "created_artifact": None,

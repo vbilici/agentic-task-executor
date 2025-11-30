@@ -173,20 +173,20 @@
 
 ### Stream A: Backend [US4]
 
-- [ ] T074 [P] [US4] Create DataItemService (CRUD operations) in `backend/app/services/data_item_service.py`
-- [ ] T075 [US4] Create create_data_item tool in `backend/app/agent/tools/create_data_item.py` (depends on T074)
-- [ ] T076 [US4] Create read_data_items tool in `backend/app/agent/tools/read_data_items.py` (depends on T074)
-- [ ] T077 [US4] Create update_data_item tool in `backend/app/agent/tools/update_data_item.py` (depends on T074)
-- [ ] T078 [US4] Create delete_data_item tool in `backend/app/agent/tools/delete_data_item.py` (depends on T074)
-- [ ] T079 [US4] Create data-items router in `backend/app/api/data_items.py` (depends on T074)
-- [ ] T080 [US4] Add CRUD tools to execution graph in `backend/app/agent/execution_graph.py`
+- [ ] ~~T074 [P] [US4] Create DataItemService (CRUD operations) in `backend/app/services/data_item_service.py`~~
+- [ ] ~~T075 [US4] Create create_data_item tool in `backend/app/agent/tools/create_data_item.py` (depends on T074)~~
+- [ ] ~~T076 [US4] Create read_data_items tool in `backend/app/agent/tools/read_data_items.py` (depends on T074)~~
+- [ ] ~~T077 [US4] Create update_data_item tool in `backend/app/agent/tools/update_data_item.py` (depends on T074)~~
+- [ ] ~~T078 [US4] Create delete_data_item tool in `backend/app/agent/tools/delete_data_item.py` (depends on T074)~~
+- [ ] ~~T079 [US4] Create data-items router in `backend/app/api/data_items.py` (depends on T074)~~
+- [ ] ~~T080 [US4] Add CRUD tools to execution graph in `backend/app/agent/execution_graph.py`~~
 
 ### Stream B: Frontend [US4]
 
-- [ ] T081 [P] [US4] Create DataItemList component in `frontend/app/components/session/DataItemList.tsx`
-- [ ] T082 [P] [US4] Create DataItemCard component in `frontend/app/components/session/DataItemCard.tsx`
-- [ ] T083 [US4] Add data items section to Session page in `frontend/app/pages/SessionPage.tsx`
-- [ ] T084 [US4] Add data_modified SSE handler in `frontend/app/pages/SessionPage.tsx`
+- [ ] ~~T081 [P] [US4] Create DataItemList component in `frontend/app/components/session/DataItemList.tsx`~~
+- [ ] ~~T082 [P] [US4] Create DataItemCard component in `frontend/app/components/session/DataItemCard.tsx`~~
+- [ ] ~~T083 [US4] Add data items section to Session page in `frontend/app/pages/SessionPage.tsx`~~
+- [ ] ~~T084 [US4] Add data_modified SSE handler in `frontend/app/pages/SessionPage.tsx`~~
 
 **Checkpoint**: US4 complete - Agent can manage structured data within sessions
 

@@ -38,7 +38,6 @@ class ExecutionState(TypedDict):
         current_task_id: ID of the task currently being executed
         tasks: List of all tasks in the session
         artifacts: Generated artifacts during execution
-        data_items: Collected data items during execution
         task_result: Result summary from task execution
         task_reflection: Agent's reflection on task completion
         created_artifact: Artifact created by the artifact_creator node
@@ -50,7 +49,6 @@ class ExecutionState(TypedDict):
     current_task_id: str | None
     tasks: list[dict[str, str | None]]
     artifacts: list[dict[str, str | None]]
-    data_items: list[dict[str, str | None]]
     task_result: str | None
     task_reflection: str | None
     created_artifact: dict[str, str] | None

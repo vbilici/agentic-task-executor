@@ -6,8 +6,6 @@ import type {
   TasksListResponse,
   Artifact,
   ArtifactsListResponse,
-  DataItem,
-  DataItemsListResponse,
   ApiError,
 } from "@/types/api";
 
@@ -108,23 +106,6 @@ class ApiClient {
 
   getArtifactDownloadUrl(sessionId: string, artifactId: string): string {
     return `${this.baseUrl}/sessions/${sessionId}/artifacts/${artifactId}/download`;
-  }
-
-  // Data Items
-  async listDataItems(
-    sessionId: string,
-    itemType?: string
-  ): Promise<DataItemsListResponse> {
-    const query = itemType ? `?item_type=${itemType}` : "";
-    return this.request<DataItemsListResponse>(
-      `/sessions/${sessionId}/data-items${query}`
-    );
-  }
-
-  async getDataItem(sessionId: string, dataItemId: string): Promise<DataItem> {
-    return this.request<DataItem>(
-      `/sessions/${sessionId}/data-items/${dataItemId}`
-    );
   }
 
   // SSE Endpoints (return URL for EventSource)

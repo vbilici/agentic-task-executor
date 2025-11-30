@@ -11,7 +11,6 @@ from app.models.base import BaseDBModel, SessionStatus, TimestampMixin
 
 if TYPE_CHECKING:
     from app.models.artifact import ArtifactSummary
-    from app.models.data_item import DataItem
     from app.models.message import CheckpointMessage
     from app.models.task import Task
 
@@ -43,13 +42,11 @@ class SessionDetail(Session):
     # Messages come from LangGraph checkpoint state, not database
     messages: list[CheckpointMessage] = Field(default_factory=list)
     artifacts: list[ArtifactSummary] = Field(default_factory=list)
-    data_items: list[DataItem] = Field(default_factory=list)
 
 
 # Rebuild model to resolve forward references
 def _rebuild_models() -> None:
     from app.models.artifact import ArtifactSummary
-    from app.models.data_item import DataItem
     from app.models.message import CheckpointMessage
     from app.models.task import Task
 
@@ -58,7 +55,6 @@ def _rebuild_models() -> None:
             "Task": Task,
             "CheckpointMessage": CheckpointMessage,
             "ArtifactSummary": ArtifactSummary,
-            "DataItem": DataItem,
         }
     )
 
