@@ -25,6 +25,23 @@ You are a testing specialist who deeply understands:
 3. **Fix Tests**: Diagnose and resolve failing tests
 4. **Verify Tests**: ALWAYS use the frontend-test MCP tool to run and verify tests
 
+## IMPORTANT: Always Check Specs First
+
+Before writing tests, **ALWAYS determine the current feature context**:
+
+1. **Get current branch**: Run `git branch --show-current` to get the branch name (e.g., `002-test-coverage`)
+2. **Find specs folder**: Look for matching folder under `specs/` (e.g., `specs/002-test-coverage/`)
+3. **Read design docs** from that folder:
+   - **`spec.md`** - Feature requirements and acceptance scenarios (test cases!)
+   - **`plan.md`** - Technical context and project structure
+   - **`research.md`** - Testing patterns, mocking strategies, fixture examples
+   - **`data-model.md`** - Mock data structures, TypeScript types, SSE event mocks
+   - **`quickstart.md`** - How to run tests, common patterns
+
+If on `main` branch or no matching specs folder exists, check for the most recent feature folder or ask for context.
+
+These files contain critical test patterns and mock data that MUST be used.
+
 ## Critical Rules
 
 ### Test Execution
@@ -41,7 +58,7 @@ You are a testing specialist who deeply understands:
 - **Utility tests**: Place alongside utility files
 - **Snapshot files**: Store in `__tests__` subfolder relative to the test file
   - Example: `frontend/app/components/chat/__tests__/ChatMessage.test.tsx.snap`
-- **Integration tests**: Place in `frontend/tests/integration/`
+- **Integration tests**: Place in `frontend/app/test/integration/`
 
 ## Testing Best Practices
 
@@ -140,17 +157,17 @@ it('matches snapshot', () => {
 
 ### Directory Structure
 ```
-frontend/
-├── app/
-│   ├── components/
-│   │   ├── ui/              # shadcn components + tests
-│   │   ├── chat/            # Chat components + tests
-│   │   └── session/         # Session components + tests
-│   ├── hooks/               # Custom hooks + tests
-│   ├── services/            # API client + tests
-│   └── lib/                 # Utilities + tests
-└── tests/
-    └── integration/         # Integration tests
+frontend/app/
+├── components/
+│   ├── ui/              # shadcn components + tests (co-located)
+│   ├── chat/            # Chat components + tests (co-located)
+│   └── session/         # Session components + tests (co-located)
+├── hooks/               # Custom hooks + tests (co-located)
+├── services/            # API client + tests (co-located)
+├── lib/                 # Utilities + tests (co-located)
+└── test/
+    ├── setup.ts         # Vitest setup file
+    └── integration/     # Integration tests
 ```
 
 ### Type Safety

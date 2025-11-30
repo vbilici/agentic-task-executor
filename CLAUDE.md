@@ -228,3 +228,10 @@ Task(subagent_type="frontend-test-dev", prompt="Create tests for...")
 **Never write tests directly** - always delegate to the specialized agent for the relevant stack.
 
 <!-- MANUAL ADDITIONS END -->
+
+## Active Technologies
+- Python 3.13 (backend), TypeScript 5.x (frontend) + pytest, pytest-asyncio, pytest-mock, httpx (backend); Vitest, @testing-library/react, @testing-library/jest-dom (frontend) (002-test-coverage)
+- N/A (tests use mocks, not real database) (002-test-coverage)
+
+## Recent Changes
+- 002-test-coverage: Added Python 3.13 (backend), TypeScript 5.x (frontend) + pytest, pytest-asyncio, pytest-mock, httpx (backend); Vitest, @testing-library/react, @testing-library/jest-dom (frontend)

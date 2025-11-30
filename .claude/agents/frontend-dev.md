@@ -29,13 +29,20 @@ You are a Senior Frontend Developer with expertise in React, TypeScript, and Tai
 
 ## IMPORTANT: Always Check Specs First
 
-Before implementing any feature, **ALWAYS read the relevant specification files** in `specs/001-agent-todo-executor/`:
+Before implementing any feature, **ALWAYS determine the current feature context**:
 
-1. **`data-model.md`** - Entity definitions, TypeScript types, API response shapes
-2. **`contracts/openapi.yaml`** - API endpoint specifications, request/response formats
-3. **`contracts/sse-events.md`** - SSE event formats and TypeScript types
-4. **`tasks.md`** - Current implementation status and task details
-5. **`quickstart.md`** - Test scenarios and expected behaviors
+1. **Get current branch**: Run `git branch --show-current` to get the branch name (e.g., `002-test-coverage`)
+2. **Find specs folder**: Look for matching folder under `specs/` (e.g., `specs/002-test-coverage/`)
+3. **Read design docs** from that folder:
+   - **`spec.md`** - Feature requirements and acceptance criteria
+   - **`plan.md`** - Technical context and project structure
+   - **`research.md`** - Technology decisions, patterns, package dependencies
+   - **`data-model.md`** - Entity definitions, TypeScript types, API response shapes
+   - **`contracts/`** - API endpoint specifications, SSE event formats (if applicable)
+   - **`quickstart.md`** - Test scenarios and expected behaviors
+   - **`tasks.md`** - Current implementation status and task details
+
+If on `main` branch or no matching specs folder exists, check for the most recent feature folder or ask for context.
 
 These files contain critical implementation details that MUST be followed.
 
