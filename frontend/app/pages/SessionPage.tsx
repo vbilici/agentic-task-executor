@@ -22,6 +22,7 @@ import { ArtifactModal } from "@/components/artifacts/ArtifactModal";
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
@@ -450,6 +451,7 @@ export function SessionPage() {
         <SheetContent side="right" className="w-[320px] p-0">
           <SheetHeader className="sr-only">
             <SheetTitle>Tasks</SheetTitle>
+            <SheetDescription>View and manage session tasks</SheetDescription>
           </SheetHeader>
           <TasksPanelContent
             tasks={tasks}
@@ -471,6 +473,7 @@ export function SessionPage() {
         <SheetContent side="right" className="w-[320px] p-0">
           <SheetHeader className="sr-only">
             <SheetTitle>Artifacts</SheetTitle>
+            <SheetDescription>View session artifacts</SheetDescription>
           </SheetHeader>
           <ArtifactsPanelContent
             artifacts={artifacts}

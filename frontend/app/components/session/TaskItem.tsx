@@ -4,17 +4,17 @@ import type { Task, TaskStatus } from "@/types/api";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   CheckCircle2,
   Circle,
   Loader2,
   XCircle,
-  ChevronDown,
-  ChevronRight,
 } from "lucide-react";
 
 interface TaskItemProps {
@@ -62,125 +62,122 @@ const statusConfig: Record<TaskStatus, StatusConfig> = {
   },
 };
 
-function truncateText(text: string, maxLength: number): string {
-  if (text.length <= maxLength) return text;
-  return `${text.slice(0, maxLength)}...`;
-}
-
 export function TaskItem({ task }: TaskItemProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [open, setOpen] = useState(false);
   const config = statusConfig[task.status];
   const Icon = config.icon;
-
-  const hasExpandableContent =
-    (task.result && task.result.length > 150) ||
-    (task.reflection && task.reflection.length > 100);
 
   const showResult = task.status === "done" && task.result;
   const showError = task.status === "failed" && task.result;
 
   return (
-    <Card className={cn("p-3", config.cardClassName)}>
-      <div className="flex items-start gap-3">
-        <Icon
-          className={cn(
-            "h-5 w-5 mt-0.5 flex-shrink-0",
-            config.iconColor,
-            task.status === "in_progress" && "animate-spin"
-          )}
-        />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">
-              #{task.order + 1}
-            </span>
-            <Badge variant={config.badgeVariant} className={cn("text-xs", config.badgeClassName)}>
-              {config.label}
-            </Badge>
+    <>
+      <Card
+        className={cn(
+          "p-3 cursor-pointer transition-colors hover:bg-accent/50",
+          config.cardClassName
+        )}
+        onClick={() => setOpen(true)}
+      >
+        <div className="flex items-start gap-3">
+          <Icon
+            className={cn(
+              "h-5 w-5 mt-0.5 flex-shrink-0",
+              config.iconColor,
+              task.status === "in_progress" && "animate-spin"
+            )}
+          />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium">{task.title}</p>
+            {task.description && (
+              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                {task.description}
+              </p>
+            )}
           </div>
-          <p className="text-sm font-medium mt-1">{task.title}</p>
-          {task.description && (
-            <p className="text-xs text-muted-foreground mt-1">
-              {task.description}
-            </p>
-          )}
+        </div>
+      </Card>
 
-          {/* Result/Error display with optional expansion */}
-          {(showResult || showError) && (
-            <>
-              {hasExpandableContent ? (
-                <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
-                  <div
-                    className={cn(
-                      "mt-2 p-2 rounded text-xs",
-                      showResult && "bg-green-50 dark:bg-green-950/50",
-                      showError && "bg-red-50 dark:bg-red-950/50"
-                    )}
-                  >
-                    <CollapsibleTrigger className="flex items-center gap-1 w-full text-left hover:underline">
-                      {isExpanded ? (
-                        <ChevronDown className="h-3 w-3 flex-shrink-0" />
-                      ) : (
-                        <ChevronRight className="h-3 w-3 flex-shrink-0" />
-                      )}
-                      <span
-                        className={cn(
-                          "font-medium",
-                          showResult && "text-green-700 dark:text-green-300",
-                          showError && "text-red-700 dark:text-red-300"
-                        )}
-                      >
-                        {showResult ? "Result" : "Error"}
-                      </span>
-                      {!isExpanded && (
-                        <span
-                          className={cn(
-                            "truncate ml-1",
-                            showResult && "text-green-600 dark:text-green-400",
-                            showError && "text-red-600 dark:text-red-400"
-                          )}
-                        >
-                          - {truncateText(task.result || "", 80)}
-                        </span>
-                      )}
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="mt-1">
-                      <p
-                        className={cn(
-                          "whitespace-pre-wrap break-words",
-                          showResult && "text-green-600 dark:text-green-400",
-                          showError && "text-red-600 dark:text-red-400"
-                        )}
-                      >
-                        {task.result}
-                      </p>
-                    </CollapsibleContent>
-                  </div>
-                </Collapsible>
-              ) : (
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Icon
+                className={cn(
+                  "h-5 w-5 flex-shrink-0",
+                  config.iconColor,
+                  task.status === "in_progress" && "animate-spin"
+                )}
+              />
+              <span className="text-muted-foreground font-normal">#{task.order + 1}</span>
+              {task.title}
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              Task details for {task.title}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Status Badge */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Status:</span>
+              <Badge variant={config.badgeVariant} className={cn("text-xs", config.badgeClassName)}>
+                {config.label}
+              </Badge>
+            </div>
+
+            {/* Description */}
+            {task.description && (
+              <div>
+                <p className="text-sm font-medium mb-1">Description</p>
+                <p className="text-sm text-muted-foreground">{task.description}</p>
+              </div>
+            )}
+
+            {/* Result/Error */}
+            {(showResult || showError) && (
+              <div
+                className={cn(
+                  "p-3 rounded-md",
+                  showResult && "bg-green-50 dark:bg-green-950/50",
+                  showError && "bg-red-50 dark:bg-red-950/50"
+                )}
+              >
                 <p
                   className={cn(
-                    "text-xs mt-2 p-2 rounded",
-                    showResult && "text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/50",
-                    showError && "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50"
+                    "text-sm font-medium mb-1",
+                    showResult && "text-green-700 dark:text-green-300",
+                    showError && "text-red-700 dark:text-red-300"
+                  )}
+                >
+                  {showResult ? "Result" : "Error"}
+                </p>
+                <p
+                  className={cn(
+                    "text-sm whitespace-pre-wrap break-words",
+                    showResult && "text-green-600 dark:text-green-400",
+                    showError && "text-red-600 dark:text-red-400"
                   )}
                 >
                   {task.result}
                 </p>
-              )}
-            </>
-          )}
+              </div>
+            )}
 
-          {/* Reflection display */}
-          {task.reflection && (
-            <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 italic">
-              {hasExpandableContent && !isExpanded
-                ? truncateText(task.reflection, 100)
-                : task.reflection}
-            </p>
-          )}
-        </div>
-      </div>
-    </Card>
+            {/* Reflection */}
+            {task.reflection && (
+              <div className="p-3 rounded-md bg-blue-50 dark:bg-blue-950/50">
+                <p className="text-sm font-medium mb-1 text-blue-700 dark:text-blue-300">
+                  Reflection
+                </p>
+                <p className="text-sm text-blue-600 dark:text-blue-400 italic">
+                  {task.reflection}
+                </p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
