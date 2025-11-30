@@ -282,13 +282,18 @@ Based on the execution results provided, give a brief, friendly summary of what 
 
 Guidelines:
 - Be conversational and positive
-- Highlight key findings or results
+- Use bullet points for key findings and results
+- Use **bold** for important highlights
 - Mention any issues if tasks failed
-- Keep it concise (2-4 sentences)
-- Don't use bullet points or markdown - just natural conversation
-- If there are notable artifacts created, mention them briefly
+- Keep it concise (3-6 bullet points max)
+- If there are notable artifacts created, mention them
 
-Remember: The user just watched their tasks execute. Give them a quick, helpful summary."""
+Format example:
+- **Main finding**: Brief description
+- **Key result**: What was discovered/accomplished
+- Any issues or next steps
+
+Remember: The user just watched their tasks execute. Give them a scannable, helpful summary."""
 
         # Create standalone LLM with streaming
         llm = ChatOpenAI(
