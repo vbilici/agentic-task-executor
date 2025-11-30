@@ -1,8 +1,7 @@
 import { cn } from "@/lib/utils";
+import { ReactMarkdown, markdownProseClasses } from "@/lib/markdown";
 import type { ExecutionEvent, MessageRole } from "@/types/api";
 import {
-  Bot,
-  User,
   Play,
   Wrench,
   CheckCircle2,
@@ -146,30 +145,15 @@ export function ChatMessage({
   const isAssistant = messageRole === "assistant";
 
   return (
-    <div
-      className={cn(
-        "flex gap-3 p-4",
-        isAssistant ? "bg-muted/50" : "bg-background"
-      )}
-    >
+    <div className={cn("flex p-4", isAssistant ? "justify-start" : "justify-end")}>
       <div
         className={cn(
-          "flex h-8 w-8 items-center justify-center rounded-full flex-shrink-0",
-          isAssistant ? "bg-primary text-primary-foreground" : "bg-secondary"
+          "max-w-[80%]",
+          !isAssistant && "bg-muted/50 rounded-2xl px-4 py-2"
         )}
       >
-        {isAssistant ? (
-          <Bot className="h-4 w-4" />
-        ) : (
-          <User className="h-4 w-4" />
-        )}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium mb-1">
-          {isAssistant ? "Assistant" : "You"}
-        </p>
-        <div className="text-sm text-foreground whitespace-pre-wrap">
-          {content}
+        <div className={cn("text-sm", markdownProseClasses)}>
+          <ReactMarkdown>{content}</ReactMarkdown>
           {isStreaming && (
             <span className="inline-block w-2 h-4 ml-1 bg-primary animate-pulse" />
           )}
