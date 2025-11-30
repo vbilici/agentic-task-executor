@@ -4,7 +4,8 @@ from collections.abc import AsyncIterator
 from typing import Any
 from uuid import UUID
 
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from psycopg.rows import dict_row
 from psycopg_pool import AsyncNullConnectionPool
@@ -229,6 +230,109 @@ class AgentService:
             )
             for i, task in enumerate(tasks)
         ]
+
+    async def summarize_execution(
+        self,
+        session_id: UUID,
+        task_results: list[dict[str, Any]],
+        total: int,
+        completed: int,
+        failed: int,
+    ) -> AsyncIterator[dict[str, Any]]:
+        """Generate execution summary as a streamed chat message.
+
+        This generates a conversational summary using a standalone LLM call,
+        then saves ONLY the AI response to the checkpoint (no fake user message).
+
+        Args:
+            session_id: The session UUID
+            task_results: List of dicts with title and result for each task
+            total: Total number of tasks
+            completed: Number of completed tasks
+            failed: Number of failed tasks
+
+        Yields:
+            Events dict with type and payload:
+            - {"type": "content", "content": "..."} - Streamed text
+            - {"type": "done"} - Summary complete
+            - {"type": "error", "error": "..."} - Error occurred
+        """
+        if not self._initialized:
+            await self.initialize()
+
+        settings = get_settings()
+
+        # Build the results summary for the LLM
+        results_text = "\n".join(
+            f"- {r.get('title', 'Task')}: {r.get('result', 'Completed')}"
+            for r in task_results
+        )
+
+        summary_context = f"""Execution completed:
+- {completed} of {total} tasks completed successfully
+{f"- {failed} tasks failed" if failed > 0 else ""}
+
+Results:
+{results_text}"""
+
+        # System prompt for execution summary
+        system_prompt = """You are summarizing the results of task execution for the user.
+
+Based on the execution results provided, give a brief, friendly summary of what was accomplished.
+
+Guidelines:
+- Be conversational and positive
+- Highlight key findings or results
+- Mention any issues if tasks failed
+- Keep it concise (2-4 sentences)
+- Don't use bullet points or markdown - just natural conversation
+- If there are notable artifacts created, mention them briefly
+
+Remember: The user just watched their tasks execute. Give them a quick, helpful summary."""
+
+        # Create standalone LLM with streaming
+        llm = ChatOpenAI(
+            model="gpt-4o",
+            api_key=settings.openai_api_key,
+            max_tokens=1024,
+            streaming=True,
+        )
+
+        # Build messages for standalone call
+        messages = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=summary_context),
+        ]
+
+        try:
+            # Accumulate full response for checkpoint
+            full_response = ""
+
+            # Stream the response
+            async for chunk in llm.astream(messages):
+                if chunk.content:
+                    full_response += chunk.content
+                    yield {"type": "content", "content": chunk.content}
+
+            # Save ONLY the AI message to checkpoint (no fake user message)
+            if full_response:
+                graph = get_planning_graph_builder().compile(
+                    checkpointer=self._checkpointer
+                )
+                config = {
+                    "configurable": {"thread_id": self._get_thread_id(session_id)}
+                }
+
+                # Use aupdate_state to add only the AI response
+                await graph.aupdate_state(
+                    config,
+                    {"messages": [AIMessage(content=full_response)]},
+                )
+
+            yield {"type": "done"}
+
+        except Exception as e:
+            yield {"type": "error", "error": str(e)}
 
 
 # Singleton instance

@@ -30,6 +30,20 @@ class TaskList(BaseModel):
     )
 
 
+EXECUTION_SUMMARY_PROMPT = """You are summarizing the results of task execution for the user.
+
+Based on the execution results provided, give a brief, friendly summary of what was accomplished.
+
+Guidelines:
+- Be conversational and positive
+- Highlight key findings or results
+- Mention any issues if tasks failed
+- Keep it concise (2-4 sentences)
+- Don't use bullet points or markdown - just natural conversation
+- If there are notable artifacts created, mention them briefly
+
+Remember: The user just watched their tasks execute. Give them a quick, helpful summary."""
+
 CHAT_PROMPT = """You are a helpful planning assistant that helps users break down their goals into actionable tasks.
 
 Your role is to:
@@ -61,9 +75,20 @@ Rules:
 - Only set ready_to_create_tasks=true if the goal is clear enough
 
 IMPORTANT - Date and Time Handling:
-- For ANY task involving dates, times, weather, schedules, or time-sensitive data, include a reminder in the task description to "use get_current_datetime tool first to determine current date"
-- NEVER assume you know the current year, month, or day - the execution agent must use date tools
-- If user mentions "December 2nd for 1 week", the task should note to calculate dates relative to current date
+- For tasks involving dates, times, weather, schedules, or time-sensitive data, ADD A NOTE IN THE TASK DESCRIPTION (do NOT create a separate task)
+- Example description note: "(Note: Use get_current_datetime first to determine current date)"
+- NEVER create a standalone task like "Use get_current_datetime tool" or "Get current date and time" - this is NOT a valid task
+- The execution agent will automatically use date tools when needed
+- If user mentions "December 2nd for 1 week", include a description note to calculate dates relative to current date
+
+Bad task examples (DO NOT create these):
+- "Use get_current_datetime tool"
+- "Get current date and time"
+- "Determine today's date"
+
+Good task example:
+- Title: "Research weather forecast for Chicago"
+- Description: "Find 7-day weather forecast. (Note: Use get_current_datetime first to determine current date)"
 
 If the user's goal is still unclear, set ready_to_create_tasks=false and return an empty task list."""
 
@@ -92,8 +117,17 @@ def create_planning_graph() -> StateGraph:
         """Generate conversational response (streamed to user)."""
         messages = list(state["messages"])
 
-        # Add system prompt
-        system_msg = SystemMessage(content=CHAT_PROMPT)
+        # Check if this is an execution summary request
+        last_message = messages[-1] if messages else None
+        is_execution_summary = (
+            last_message
+            and hasattr(last_message, "content")
+            and "[EXECUTION COMPLETE]" in str(last_message.content)
+        )
+
+        # Use appropriate system prompt
+        prompt = EXECUTION_SUMMARY_PROMPT if is_execution_summary else CHAT_PROMPT
+        system_msg = SystemMessage(content=prompt)
         messages_with_system = [system_msg, *messages]
 
         # Get response from LLM (will be streamed via astream_events)

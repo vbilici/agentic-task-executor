@@ -6,7 +6,11 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
-from app.agent.execution_graph import execute_single_task, get_execution_graph_builder
+from app.agent.execution_graph import (
+    create_execution_summary,
+    execute_single_task,
+    get_execution_graph_builder,
+)
 from app.models.base import SessionStatus
 from app.services.agent_service import agent_service
 from app.services.session_service import session_service
@@ -218,3 +222,95 @@ def _sse_event(event_type: str, data: dict) -> str:
         Formatted SSE event string
     """
     return f"event: {event_type}\ndata: {json.dumps(data)}\n\n"
+
+
+@router.post("/{session_id}/summarize")
+async def summarize_session(session_id: UUID) -> StreamingResponse:
+    """Generate execution summary and stream as chat message.
+
+    This endpoint is called by the frontend after execution completes.
+    It generates a conversational summary using the planning agent and
+    saves only the AI response to the checkpoint (no fake user message).
+
+    Events emitted:
+    - content: Streamed summary text
+    - done: Summary complete
+    - error: When an error occurs
+    """
+    # Verify session exists
+    session = await session_service.get(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    # Get completed tasks
+    tasks = await task_service.list_by_session(session_id)
+    completed_tasks = [t for t in tasks if t.status.value == "done"]
+
+    if not completed_tasks:
+        raise HTTPException(
+            status_code=400,
+            detail="No completed tasks to summarize",
+        )
+
+    # Build task results
+    task_results = [
+        {"title": t.title, "result": t.result or "Completed"} for t in completed_tasks
+    ]
+    total = len(tasks)
+    completed = len(completed_tasks)
+    failed = len([t for t in tasks if t.status.value == "failed"])
+
+    async def event_stream():
+        """Generate SSE events for summary."""
+        try:
+            # First create the summary artifact
+            summary_result = await create_execution_summary(
+                session_id=session_id,
+                task_results=task_results,
+                total=total,
+                completed=completed,
+                failed=failed,
+            )
+
+            if summary_result:
+                # Emit artifact_created event
+                artifact = summary_result["artifact"]
+                yield _sse_event(
+                    "artifact_created",
+                    {
+                        "type": "artifact_created",
+                        "taskId": None,
+                        "artifactId": artifact["id"],
+                        "name": artifact["name"],
+                        "artifactType": artifact["type"],
+                    },
+                )
+
+            # Stream execution summary as chat message
+            async for event in agent_service.summarize_execution(
+                session_id=session_id,
+                task_results=task_results,
+                total=total,
+                completed=completed,
+                failed=failed,
+            ):
+                event_type = event.get("type")
+                if event_type == "content":
+                    yield _sse_event("content", event)
+                elif event_type == "error":
+                    yield _sse_event("error", event)
+                elif event_type == "done":
+                    yield _sse_event("done", {"type": "done"})
+
+        except Exception as e:
+            yield _sse_event("error", {"type": "error", "error": str(e)})
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )

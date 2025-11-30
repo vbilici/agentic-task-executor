@@ -1,6 +1,6 @@
 """LangGraph execution agent definition for task execution with tools."""
 
-import re
+import logging
 from collections.abc import AsyncIterator
 from typing import Any, Literal
 from uuid import UUID
@@ -14,6 +14,11 @@ from pydantic import BaseModel, Field
 from app.agent.state import ExecutionState
 from app.agent.tools import ALL_TOOLS
 from app.core.config import get_settings
+from app.models.artifact import ArtifactCreate
+from app.models.base import ArtifactType
+from app.services.artifact_service import artifact_service
+
+logger = logging.getLogger(__name__)
 
 
 class TaskResult(BaseModel):
@@ -25,37 +30,39 @@ class TaskResult(BaseModel):
     )
 
 
+class ArtifactDecision(BaseModel):
+    """Structured output for artifact creation decision."""
+
+    should_create: bool = Field(
+        description="Whether this task result warrants saving as an artifact"
+    )
+    name: str | None = Field(
+        default=None, description="Descriptive name for the artifact"
+    )
+    artifact_type: Literal["document", "note", "summary", "plan", "other"] | None = (
+        Field(default=None, description="Type of artifact to create")
+    )
+    content: str | None = Field(
+        default=None,
+        description="Well-formatted artifact content with headers and structure",
+    )
+
+
 EXECUTION_PROMPT = """You are a task execution agent that completes tasks using available tools.
 
 ## Current Task
 Title: {task_title}
 Description: {task_description}
 
-## Session Context (USE THESE EXACT VALUES)
+## Session Context
 Session ID: {session_id}
-Current Task ID: {task_id}
-
-IMPORTANT: When calling create_artifact, you MUST use the exact session_id above: {session_id}
+Task ID: {task_id}
 
 ## Instructions
 1. Analyze what needs to be done based on the task title and description
 2. Use the available tools to gather information or perform calculations
 3. Work through the task step by step
-4. When finished, provide a clear summary of what you accomplished
-5. Create an artifact for ANY valuable output the user will want to reference later
-
-## When to Create Artifacts (IMPORTANT)
-You MUST create an artifact when your task produces:
-- Research findings or comparisons (venue options, product comparisons, etc.)
-- Plans, agendas, or schedules
-- Lists of recommendations or options
-- Summaries of information gathered
-- Any structured document the user will need later
-- Contact information, pricing quotes, or booking details
-- Checklists or action items
-
-Basically: If the task result has VALUE that the user might want to see, reference, or download later - CREATE AN ARTIFACT.
-Do NOT just describe what you found in chat - save it as an artifact so the user has it.
+4. When finished, provide a clear, detailed summary of what you accomplished and found
 
 ## Available Tools
 - web_search: Search the internet for current information
@@ -65,7 +72,6 @@ Do NOT just describe what you found in chat - save it as an artifact so the user
 - calculate_date_difference: Calculate time between two dates
 - add_time_to_date: Add or subtract time from a date
 - get_day_of_week: Get the day of week for any date
-- create_artifact: Create a document, note, summary, or plan that will be saved
 - read_artifact: Read content from a previously created artifact
 - list_artifacts: List all artifacts in the current session
 
@@ -84,8 +90,7 @@ Do NOT just describe what you found in chat - save it as an artifact so the user
 - Be thorough but efficient
 - If you need information, use web_search
 - For any calculations, use the calculator tool
-- ALWAYS create an artifact when you produce valuable content (research, plans, lists, summaries)
-- Provide clear, actionable results
+- Provide clear, actionable results with all relevant details
 - If a task cannot be completed, explain why
 
 Start working on the task now."""
@@ -100,6 +105,37 @@ Review what was accomplished and provide:
 2. A brief reflection on how well the task was completed
 
 Be concise but informative."""
+
+
+ARTIFACT_CREATOR_PROMPT = """You are an artifact creator. Review the task execution and decide if the results should be saved as an artifact for the user.
+
+Task: {task_title}
+Result: {task_result}
+
+## When to Create an Artifact (should_create=true)
+Create an artifact if the task produced:
+- Research findings, comparisons, or analysis
+- Drafted content (invitations, emails, messages, posts)
+- Plans, agendas, schedules, or itineraries
+- Lists of recommendations, options, or ideas
+- Summaries of gathered information
+- Contact info, pricing, quotes, or booking details
+- Checklists or action items
+- Any structured information the user would want to reference later
+
+## When NOT to Create an Artifact (should_create=false)
+Do NOT create an artifact if:
+- The result is just "task completed" or a simple confirmation
+- The task failed or couldn't be completed
+- There's no substantive content worth saving
+- The information is trivial or transient
+
+## If Creating an Artifact
+- Give it a clear, descriptive name
+- Choose the appropriate type (document, note, summary, plan, other)
+- Format the content nicely with markdown headers, lists, and structure
+- Include all relevant details from the task result
+- Make it useful as a standalone reference document"""
 
 
 def create_execution_graph() -> StateGraph:
@@ -124,6 +160,14 @@ def create_execution_graph() -> StateGraph:
         max_tokens=1024,
         streaming=False,
     ).with_structured_output(TaskResult)
+
+    # Create LLM for artifact creation decision
+    artifact_llm = ChatOpenAI(
+        model="gpt-4o",
+        api_key=settings.openai_api_key,
+        max_tokens=4096,
+        streaming=False,
+    ).with_structured_output(ArtifactDecision)
 
     # Create tool node
     tool_node = ToolNode(ALL_TOOLS)
@@ -198,6 +242,89 @@ def create_execution_graph() -> StateGraph:
             "is_complete": True,
         }
 
+    def artifact_creator_node(state: ExecutionState) -> dict[str, Any]:
+        """Decide whether to create an artifact from the task result."""
+        # Get current task info
+        current_task = None
+        for task in state["tasks"]:
+            if task.get("id") == state["current_task_id"]:
+                current_task = task
+                break
+
+        task_title = (
+            current_task.get("title", "Unknown task")
+            if current_task
+            else "Unknown task"
+        )
+        task_result = state.get("task_result", "")
+
+        # Skip if no meaningful result
+        if not task_result or task_result.strip() == "":
+            return {"created_artifact": None}
+
+        # Create prompt for artifact decision
+        prompt = ARTIFACT_CREATOR_PROMPT.format(
+            task_title=task_title,
+            task_result=task_result,
+        )
+
+        artifact_messages = [
+            SystemMessage(content=prompt),
+            HumanMessage(
+                content="Based on this task result, should I create an artifact?"
+            ),
+        ]
+
+        # Get structured decision
+        decision: ArtifactDecision = artifact_llm.invoke(artifact_messages)
+
+        # If should create, call artifact service directly
+        if decision.should_create and decision.name and decision.content:
+            try:
+                artifact_data = ArtifactCreate(
+                    session_id=UUID(state["session_id"]),
+                    task_id=UUID(state["current_task_id"])
+                    if state["current_task_id"]
+                    else None,
+                    name=decision.name,
+                    type=ArtifactType(decision.artifact_type or "note"),
+                    content=decision.content,
+                )
+                # Note: This is sync, but we're in a sync node context
+                # The artifact will be created and we'll store info for event emission
+                import asyncio
+
+                try:
+                    loop = asyncio.get_event_loop()
+                    if loop.is_running():
+                        import concurrent.futures
+
+                        with concurrent.futures.ThreadPoolExecutor() as executor:
+                            future = executor.submit(
+                                asyncio.run, artifact_service.create(artifact_data)
+                            )
+                            artifact = future.result()
+                    else:
+                        artifact = loop.run_until_complete(
+                            artifact_service.create(artifact_data)
+                        )
+                except RuntimeError:
+                    artifact = asyncio.run(artifact_service.create(artifact_data))
+
+                return {
+                    "created_artifact": {
+                        "id": str(artifact.id),
+                        "name": artifact.name,
+                        "type": artifact.type.value,
+                    }
+                }
+            except Exception as e:
+                # Log the error and continue without artifact
+                logger.error(f"Failed to create artifact: {e}", exc_info=True)
+                return {"created_artifact": None}
+
+        return {"created_artifact": None}
+
     def should_continue(state: ExecutionState) -> Literal["tools", "reflect"]:
         """Determine if agent should use tools or reflect on completion."""
         messages = state["messages"]
@@ -217,6 +344,7 @@ def create_execution_graph() -> StateGraph:
     builder.add_node("agent", agent_node)
     builder.add_node("tools", tool_node)
     builder.add_node("reflect", reflection_node)
+    builder.add_node("artifact_creator", artifact_creator_node)
 
     # Set entry point
     builder.set_entry_point("agent")
@@ -234,8 +362,11 @@ def create_execution_graph() -> StateGraph:
     # Tools always go back to agent
     builder.add_edge("tools", "agent")
 
-    # Reflect ends the graph
-    builder.add_edge("reflect", END)
+    # Reflect goes to artifact creator
+    builder.add_edge("reflect", "artifact_creator")
+
+    # Artifact creator ends the graph
+    builder.add_edge("artifact_creator", END)
 
     return builder
 
@@ -324,8 +455,12 @@ Please complete this task using the available tools and the context from previou
         "data_items": [],
         "task_result": None,
         "task_reflection": None,
+        "created_artifact": None,
         "is_complete": False,
     }
+
+    # Track emitted events to prevent duplicates
+    artifact_analysis_started = False
 
     try:
         # Stream events from the graph
@@ -365,27 +500,6 @@ Please complete this task using the available tools and the context from previou
                 tool_output = event.get("data", {}).get("output", "")
                 output_str = str(tool_output)
 
-                # Check if an artifact was created
-                if (
-                    tool_name == "create_artifact"
-                    and "Successfully created" in output_str
-                ):
-                    # Extract artifact info from the output
-                    # Output format: "Successfully created {type} artifact '{name}' (ID: {id})"
-                    match = re.search(
-                        r"Successfully created (\w+) artifact '(.+)' \(ID: ([^)]+)\)",
-                        output_str,
-                    )
-                    if match:
-                        artifact_type, artifact_name, artifact_id = match.groups()
-                        yield {
-                            "type": "artifact_created",
-                            "taskId": task_id,
-                            "artifactId": artifact_id,
-                            "name": artifact_name,
-                            "artifactType": artifact_type,
-                        }
-
                 # Truncate long outputs for the event
                 if len(output_str) > 500:
                     output_str = output_str[:500] + "..."
@@ -418,9 +532,151 @@ Please complete this task using the available tools and the context from previou
                             "text": reflection,
                         }
 
+            elif event_type == "on_chain_start" and node_name == "artifact_creator":
+                # Artifact creator starting - emit event for UI (only once)
+                if not artifact_analysis_started:
+                    artifact_analysis_started = True
+                    yield {
+                        "type": "artifact_analysis_start",
+                        "taskId": task_id,
+                    }
+
+            elif event_type == "on_chain_end" and node_name == "artifact_creator":
+                # Artifact creator complete - check if artifact was created
+                output = event.get("data", {}).get("output", {})
+                if isinstance(output, dict):
+                    created_artifact = output.get("created_artifact")
+                    if created_artifact:
+                        yield {
+                            "type": "artifact_created",
+                            "taskId": task_id,
+                            "artifactId": created_artifact.get("id"),
+                            "name": created_artifact.get("name"),
+                            "artifactType": created_artifact.get("type"),
+                        }
+                    else:
+                        # No artifact created - emit event so UI knows analysis is done
+                        yield {
+                            "type": "artifact_analysis_complete",
+                            "taskId": task_id,
+                            "created": False,
+                        }
+
     except Exception as e:
         yield {
             "type": "error",
             "taskId": task_id,
             "error": str(e),
         }
+
+
+# Prompt for execution summary generation
+EXECUTION_SUMMARY_PROMPT = """You are creating a summary of a completed task execution session.
+
+## Completed Tasks and Results
+{task_results}
+
+## Execution Statistics
+- Total tasks: {total}
+- Completed: {completed}
+- Failed: {failed}
+
+Based on the above, create:
+1. A brief summary (2-3 sentences) for chat display
+2. A detailed summary document with all findings, recommendations, and next steps
+
+The detailed summary should be well-structured with markdown headers and include:
+- Overview of what was accomplished
+- Key findings from each task
+- Recommendations or actionable items
+- Any issues or limitations encountered
+- Suggested next steps"""
+
+
+class ExecutionSummary(BaseModel):
+    """Structured output for execution summary."""
+
+    brief_summary: str = Field(description="2-3 sentence summary for chat display")
+    detailed_summary: str = Field(
+        description="Full markdown summary document for artifact"
+    )
+    artifact_name: str = Field(description="Descriptive name for the summary artifact")
+
+
+async def create_execution_summary(
+    session_id: UUID,
+    task_results: list[dict],
+    total: int,
+    completed: int,
+    failed: int,
+) -> dict | None:
+    """Create a summary of the entire execution.
+
+    Args:
+        session_id: The session UUID
+        task_results: List of dicts with title and result for each completed task
+        total: Total number of tasks
+        completed: Number of completed tasks
+        failed: Number of failed tasks
+
+    Returns:
+        Dict with brief_summary, artifact info, or None if generation fails
+    """
+    if not task_results:
+        return None
+
+    settings = get_settings()
+
+    # Format task results for prompt
+    results_text = "\n".join(
+        f"### {r.get('title', 'Unknown Task')}\n{r.get('result', 'No result')}\n"
+        for r in task_results
+    )
+
+    prompt = EXECUTION_SUMMARY_PROMPT.format(
+        task_results=results_text,
+        total=total,
+        completed=completed,
+        failed=failed,
+    )
+
+    try:
+        # Create LLM for structured output
+        summary_llm = ChatOpenAI(
+            model="gpt-4o",
+            api_key=settings.openai_api_key,
+            max_tokens=4096,
+            streaming=False,
+        ).with_structured_output(ExecutionSummary)
+
+        # Generate summary
+        result: ExecutionSummary = summary_llm.invoke(
+            [
+                SystemMessage(content=prompt),
+                HumanMessage(content="Generate the execution summary."),
+            ]
+        )
+
+        # Create artifact
+        artifact_data = ArtifactCreate(
+            session_id=session_id,
+            task_id=None,  # Session-level artifact, not tied to a task
+            name=result.artifact_name,
+            type=ArtifactType.SUMMARY,
+            content=result.detailed_summary,
+        )
+        artifact = await artifact_service.create(artifact_data)
+
+        return {
+            "brief_summary": result.brief_summary,
+            "artifact": {
+                "id": str(artifact.id),
+                "name": artifact.name,
+                "type": artifact.type.value,
+            },
+        }
+
+    except Exception as e:
+        # Log the error and return None
+        logger.error(f"Failed to create execution summary: {e}", exc_info=True)
+        return None

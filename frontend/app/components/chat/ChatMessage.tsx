@@ -106,20 +106,30 @@ function ExecutionEventMessage({ event, compact = false }: { event: ExecutionEve
 
   // Compact mode: smaller padding, single line
   if (compact) {
+    // Only truncate tool results, not task titles
+    const shouldTruncate = event.type === "tool_result" || event.type === "tool_call";
+    const displayContent = shouldTruncate && config.content && config.content.length > 100
+      ? `${config.content.slice(0, 100)}...`
+      : config.content;
+
     return (
       <div className={cn("flex items-center gap-2 px-3 py-1.5 mx-2 my-0.5 rounded", config.bgColor)}>
         <Icon className={cn("h-4 w-4 flex-shrink-0", config.iconColor)} />
         <span className="text-xs font-medium text-muted-foreground">
           {config.label}:
         </span>
-        <span className="text-xs truncate flex-1 min-w-0">
-          {config.content && config.content.length > 100
-            ? `${config.content.slice(0, 100)}...`
-            : config.content}
+        <span className={cn("text-xs flex-1 min-w-0", shouldTruncate && "truncate")}>
+          {displayContent}
         </span>
       </div>
     );
   }
+
+  // Only truncate tool results in normal mode too
+  const shouldTruncateNormal = event.type === "tool_result" || event.type === "tool_call";
+  const displayContentNormal = shouldTruncateNormal && config.content && config.content.length > 500
+    ? `${config.content.slice(0, 500)}...`
+    : config.content;
 
   return (
     <div className={cn("flex gap-3 p-3 rounded-lg mx-4 my-2", config.bgColor)}>
@@ -129,9 +139,7 @@ function ExecutionEventMessage({ event, compact = false }: { event: ExecutionEve
           {config.label}
         </p>
         <p className="text-sm whitespace-pre-wrap break-words">
-          {config.content && config.content.length > 500
-            ? `${config.content.slice(0, 500)}...`
-            : config.content}
+          {displayContentNormal}
         </p>
       </div>
     </div>

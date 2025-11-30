@@ -133,6 +133,10 @@ class ApiClient {
   getExecuteSSEUrl(sessionId: string): string {
     return `${this.baseUrl}/sessions/${sessionId}/execute`;
   }
+
+  getSummarizeSSEUrl(sessionId: string): string {
+    return `${this.baseUrl}/sessions/${sessionId}/summarize`;
+  }
 }
 
 export const api = new ApiClient(API_URL);

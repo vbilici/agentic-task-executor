@@ -8,6 +8,9 @@ import {
   MessageSquare,
   AlertCircle,
   ListTodo,
+  FileSearch,
+  FileX,
+  FileText,
 } from "lucide-react";
 import { ToolCallDisplay } from "./ToolCallDisplay";
 
@@ -83,6 +86,22 @@ function getEventConfig(event: ExecutionEvent): EventConfig {
         textColor: "text-red-700 dark:text-red-300",
         label: "Error",
       };
+    case "artifact_analysis_start":
+      return {
+        icon: FileSearch,
+        bgColor: "bg-purple-50 dark:bg-purple-950",
+        borderColor: "border-purple-200 dark:border-purple-800",
+        textColor: "text-purple-700 dark:text-purple-300",
+        label: "Analyzing for Artifacts",
+      };
+    case "artifact_analysis_complete":
+      return {
+        icon: FileX,
+        bgColor: "bg-gray-50 dark:bg-gray-900",
+        borderColor: "border-gray-200 dark:border-gray-700",
+        textColor: "text-gray-700 dark:text-gray-300",
+        label: "No Artifact Needed",
+      };
     case "artifact_created":
       return {
         icon: CheckCircle2,
@@ -98,6 +117,22 @@ function getEventConfig(event: ExecutionEvent): EventConfig {
         borderColor: "border-indigo-200 dark:border-indigo-800",
         textColor: "text-indigo-700 dark:text-indigo-300",
         label: "Data Modified",
+      };
+    case "summary_creating":
+      return {
+        icon: FileText,
+        bgColor: "bg-blue-50 dark:bg-blue-950",
+        borderColor: "border-blue-200 dark:border-blue-800",
+        textColor: "text-blue-700 dark:text-blue-300",
+        label: "Creating Summary",
+      };
+    case "execution_summary":
+      return {
+        icon: FileText,
+        bgColor: "bg-green-50 dark:bg-green-950",
+        borderColor: "border-green-200 dark:border-green-800",
+        textColor: "text-green-700 dark:text-green-300",
+        label: "Execution Summary",
       };
     case "done":
       return {
@@ -170,6 +205,18 @@ function renderEventContent(
       );
     case "error":
       return <p className="text-sm font-medium">{event.error}</p>;
+    case "artifact_analysis_start":
+      return (
+        <p className="text-sm text-muted-foreground">
+          Analyzing task result to determine if an artifact should be created...
+        </p>
+      );
+    case "artifact_analysis_complete":
+      return (
+        <p className="text-sm text-muted-foreground">
+          Task result does not require an artifact.
+        </p>
+      );
     case "artifact_created":
       return (
         <p className="text-sm">
@@ -187,6 +234,16 @@ function renderEventContent(
               : "Deleted"}{" "}
           {event.itemType}
         </p>
+      );
+    case "summary_creating":
+      return (
+        <p className="text-sm text-muted-foreground">
+          Generating execution summary...
+        </p>
+      );
+    case "execution_summary":
+      return (
+        <p className="text-sm">{event.summary}</p>
       );
     case "done":
       return (

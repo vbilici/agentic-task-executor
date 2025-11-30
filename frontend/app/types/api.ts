@@ -117,10 +117,14 @@ export type ExecutionEventType =
   | "task_selected"
   | "tool_call"
   | "tool_result"
+  | "artifact_analysis_start"
+  | "artifact_analysis_complete"
   | "artifact_created"
   | "data_modified"
   | "task_completed"
   | "reflection"
+  | "summary_creating"
+  | "execution_summary"
   | "error"
   | "done";
 
@@ -141,6 +145,17 @@ export interface ToolResultEvent {
   taskId: string;
   tool: string;
   output: string;
+}
+
+export interface ArtifactAnalysisStartEvent {
+  type: "artifact_analysis_start";
+  taskId: string;
+}
+
+export interface ArtifactAnalysisCompleteEvent {
+  type: "artifact_analysis_complete";
+  taskId: string;
+  created: boolean;
 }
 
 export interface ArtifactCreatedEvent {
@@ -178,6 +193,15 @@ export interface ExecutionErrorEvent {
   error: string;
 }
 
+export interface SummaryCreatingEvent {
+  type: "summary_creating";
+}
+
+export interface ExecutionSummaryEvent {
+  type: "execution_summary";
+  summary: string;
+}
+
 export interface ExecutionDoneEvent {
   type: "done";
   summary: {
@@ -191,10 +215,14 @@ export type ExecutionEvent =
   | TaskSelectedEvent
   | ToolCallEvent
   | ToolResultEvent
+  | ArtifactAnalysisStartEvent
+  | ArtifactAnalysisCompleteEvent
   | ArtifactCreatedEvent
   | DataModifiedEvent
   | TaskCompletedEvent
   | ReflectionEvent
+  | SummaryCreatingEvent
+  | ExecutionSummaryEvent
   | ExecutionErrorEvent
   | ExecutionDoneEvent;
 

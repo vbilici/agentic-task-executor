@@ -35,6 +35,7 @@ export function SessionPage() {
 
   // Execution state
   const [isExecuting, setIsExecuting] = useState(false);
+  const [isSummarizing, setIsSummarizing] = useState(false);
 
   // Execution log display state
   const [isExecutionLogsExpanded, setIsExecutionLogsExpanded] = useState(false);
@@ -101,6 +102,64 @@ export function SessionPage() {
     const task = tasksRef.current.find((t) => t.id === taskId);
     return task?.title;
   }, []);
+
+  // Summarize SSE handler - handles streaming summary after execution
+  // Uses union type to handle both ChatEvent and artifact_created from ExecutionEvent
+  const { connect: connectSummarize } = useSSE<ChatEvent | ExecutionEvent>({
+    onMessage: useCallback((event: ChatEvent | ExecutionEvent) => {
+      switch (event.type) {
+        case "content":
+          setStreamingContent((prev) => prev + (event as ChatEvent).content);
+          break;
+        case "artifact_created": {
+          // Add new artifact to the list
+          const artifactEvent = event as ExecutionEvent & { type: "artifact_created" };
+          const newArtifact: ArtifactSummary = {
+            id: artifactEvent.artifactId,
+            sessionId: sessionId || "",
+            taskId: artifactEvent.taskId,
+            name: artifactEvent.name,
+            type: artifactEvent.artifactType as ArtifactType,
+            createdAt: new Date().toISOString(),
+          };
+          setArtifacts((prev) => [...prev, newArtifact]);
+          break;
+        }
+        case "done": {
+          // Add the streamed summary to the messages list
+          const finalContent = streamingContentRef.current;
+          if (finalContent) {
+            setMessages((prev) => [
+              ...prev,
+              { role: "assistant", content: finalContent },
+            ]);
+          }
+          setStreamingContent("");
+          setIsSummarizing(false);
+          break;
+        }
+        case "error":
+          console.error("Summarize error:", (event as ChatEvent).error);
+          setStreamingContent("");
+          setIsSummarizing(false);
+          break;
+      }
+    }, [sessionId]),
+  });
+
+  // Trigger summarize after execution completes
+  const triggerSummarize = useCallback(() => {
+    if (!sessionId) return;
+    setIsSummarizing(true);
+    setStreamingContent("");
+    // Add a system message indicating summarization started
+    setMessages((prev) => [
+      ...prev,
+      { role: "system" as const, content: "Generating execution summary..." },
+    ]);
+    const summarizeUrl = api.getSummarizeSSEUrl(sessionId);
+    connectSummarize(summarizeUrl, {});
+  }, [sessionId, connectSummarize]);
 
   // Execution SSE handler - we use 'unknown' first to handle content events from backend
   const { connect: connectExecution } = useSSE<ExecutionEvent | { type: "content"; content: string }>({
@@ -178,6 +237,8 @@ export function SessionPage() {
           setSession((prev) =>
             prev ? { ...prev, status: "completed" } : prev
           );
+          // Trigger summarize after execution completes
+          triggerSummarize();
           break;
         case "error":
           if (!event.taskId) {
@@ -186,7 +247,7 @@ export function SessionPage() {
           }
           break;
       }
-    }, [getTaskTitle, sessionId]),
+    }, [getTaskTitle, sessionId, triggerSummarize]),
   });
 
   const loadSession = useCallback(async () => {
@@ -292,7 +353,7 @@ export function SessionPage() {
           <div className="flex-1 flex items-center justify-center p-4">
             <ChatInput
               onSend={handleSendMessage}
-              disabled={isSending || isExecuting}
+              disabled={isSending || isExecuting || isSummarizing}
               placeholder="Describe your goal..."
               className="w-full max-w-2xl border-t-0 rounded-lg border border-border"
             />
@@ -316,10 +377,12 @@ export function SessionPage() {
             <div className="absolute bottom-0 left-0 right-0">
               <ChatInput
                 onSend={handleSendMessage}
-                disabled={isSending || isExecuting}
+                disabled={isSending || isExecuting || isSummarizing}
                 placeholder={
                   isExecuting
                     ? "Execution in progress..."
+                    : isSummarizing
+                    ? "Generating summary..."
                     : "Ask a follow-up question..."
                 }
               />
