@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api } from "@/services/api";
 import { useSSE } from "@/hooks/useSSE";
+import { useMobileNavContext } from "@/contexts/MobileNavContext";
 import type {
   Task,
   ChatEvent,
@@ -15,11 +16,27 @@ import { ChatInput } from "@/components/chat/ChatInput";
 import { ChatMessageList, type ChatMessageItem } from "@/components/chat/ChatMessageList";
 import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 import { RightSidebar } from "@/components/layout/RightSidebar";
+import { TasksPanelContent } from "@/components/layout/TasksPanelContent";
+import { ArtifactsPanelContent } from "@/components/layout/ArtifactsPanelContent";
 import { ArtifactModal } from "@/components/artifacts/ArtifactModal";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 
 export function SessionPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
+  const {
+    activePanel,
+    closePanel,
+    setTaskCount,
+    setArtifactCount,
+    setIsExtractingTasks: setMobileIsExtractingTasks,
+    setSessionTitle,
+  } = useMobileNavContext();
 
   // Session state
   const [session, setSession] = useState<SessionDetail | null>(null);
@@ -43,6 +60,23 @@ export function SessionPage() {
 
   // Artifact modal state
   const [selectedArtifactId, setSelectedArtifactId] = useState<string | null>(null);
+
+  // Sync mobile nav context with task/artifact counts
+  useEffect(() => {
+    setTaskCount(tasks.length);
+  }, [tasks.length, setTaskCount]);
+
+  useEffect(() => {
+    setArtifactCount(artifacts.length);
+  }, [artifacts.length, setArtifactCount]);
+
+  useEffect(() => {
+    setMobileIsExtractingTasks(isExtractingTasks);
+  }, [isExtractingTasks, setMobileIsExtractingTasks]);
+
+  useEffect(() => {
+    setSessionTitle(session?.title || "New Session");
+  }, [session?.title, setSessionTitle]);
 
   // Reference to tasks for execution event handler
   const tasksRef = useRef<Task[]>([]);
@@ -307,6 +341,8 @@ export function SessionPage() {
 
   const handleSelectArtifact = (artifactId: string) => {
     setSelectedArtifactId(artifactId);
+    // Close mobile sheet when selecting an artifact
+    closePanel();
   };
 
   const handleCloseArtifactModal = () => {
@@ -338,8 +374,8 @@ export function SessionPage() {
     <div className="flex h-full overflow-hidden">
       {/* Chat Area */}
       <div className="flex-1 min-w-0 flex flex-col">
-        {/* Header */}
-        <header className="flex items-center gap-4 p-4 border-b border-border bg-card">
+        {/* Header - Hidden on mobile (MobileHeader handles it) */}
+        <header className="hidden sm:flex items-center gap-4 p-4 border-b border-border bg-card">
           <div className="flex-1">
             <h1 className="text-lg font-semibold truncate">
               {session?.title || "New Session"}
@@ -393,7 +429,7 @@ export function SessionPage() {
         )}
       </div>
 
-      {/* Right Sidebar - Tasks & Artifacts */}
+      {/* Desktop Right Sidebar - Tasks & Artifacts (hidden on mobile) */}
       <RightSidebar
         tasks={tasks}
         artifacts={artifacts}
@@ -405,6 +441,43 @@ export function SessionPage() {
         showExecuteButton={session?.status !== "completed"}
         isExtractingTasks={isExtractingTasks}
       />
+
+      {/* Mobile Tasks Sheet */}
+      <Sheet
+        open={activePanel === "tasks"}
+        onOpenChange={(open) => !open && closePanel()}
+      >
+        <SheetContent side="right" className="w-[320px] p-0">
+          <SheetHeader className="sr-only">
+            <SheetTitle>Tasks</SheetTitle>
+          </SheetHeader>
+          <TasksPanelContent
+            tasks={tasks}
+            isExtractingTasks={isExtractingTasks}
+            canExecute={canExecute}
+            isExecuting={isExecuting}
+            pendingTaskCount={pendingTaskCount}
+            onExecute={handleExecute}
+            showExecuteButton={session?.status !== "completed"}
+          />
+        </SheetContent>
+      </Sheet>
+
+      {/* Mobile Artifacts Sheet */}
+      <Sheet
+        open={activePanel === "artifacts"}
+        onOpenChange={(open) => !open && closePanel()}
+      >
+        <SheetContent side="right" className="w-[320px] p-0">
+          <SheetHeader className="sr-only">
+            <SheetTitle>Artifacts</SheetTitle>
+          </SheetHeader>
+          <ArtifactsPanelContent
+            artifacts={artifacts}
+            onSelectArtifact={handleSelectArtifact}
+          />
+        </SheetContent>
+      </Sheet>
 
       {/* Artifact Modal */}
       {selectedArtifactId && sessionId && (

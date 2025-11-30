@@ -2,10 +2,8 @@ import { useState, useEffect } from "react";
 import { ListTodo, FileText, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Task, ArtifactSummary } from "@/types/api";
-import { TaskItem } from "@/components/session/TaskItem";
-import { ExecuteButton } from "@/components/session/ExecuteButton";
-import { ArtifactList } from "@/components/artifacts/ArtifactList";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { TasksPanelContent } from "./TasksPanelContent";
+import { ArtifactsPanelContent } from "./ArtifactsPanelContent";
 import { Badge } from "@/components/ui/badge";
 
 type TabType = "tasks" | "artifacts" | null;
@@ -62,80 +60,26 @@ export function RightSidebar({
   }
 
   return (
-    <div className="flex h-screen sticky top-0 border-l border-border">
+    // Hidden on mobile (sm:flex), visible on desktop
+    <div className="hidden sm:flex h-screen sticky top-0 border-l border-border">
       {/* Content Panel */}
       {activeTab && (
         <div className="w-72 flex flex-col bg-card">
-          {/* Header */}
-          <div className="flex items-center justify-between border-b border-border p-3">
-            <div className="flex items-center gap-2">
-              {activeTab === "tasks" ? (
-                <ListTodo className="h-4 w-4 text-muted-foreground" />
-              ) : (
-                <FileText className="h-4 w-4 text-muted-foreground" />
-              )}
-              <span className="text-sm font-semibold">
-                {activeTab === "tasks" ? "Tasks" : "Artifacts"}
-              </span>
-              <Badge variant="secondary" className="text-xs">
-                {activeTab === "tasks" ? tasks.length : artifacts.length}
-              </Badge>
-            </div>
-          </div>
-
-          {/* Content */}
-          <ScrollArea className="flex-1">
-            {activeTab === "tasks" && (
-              <div className="p-3">
-                {isExtractingTasks ? (
-                  <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                    <Loader2 className="h-8 w-8 mb-2 animate-spin" />
-                    <p className="text-sm font-medium">Generating tasks...</p>
-                    <p className="text-xs mt-1">Analyzing your goal</p>
-                  </div>
-                ) : tasks.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                    <ListTodo className="h-8 w-8 mb-2 opacity-50" />
-                    <p className="text-xs">No tasks yet</p>
-                    <p className="text-xs mt-1">Describe your goal to generate tasks</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {tasks.map((task) => (
-                      <TaskItem key={task.id} task={task} />
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {activeTab === "artifacts" && (
-              <div className="p-3">
-                {artifacts.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                    <FileText className="h-8 w-8 mb-2 opacity-50" />
-                    <p className="text-xs">No artifacts yet</p>
-                  </div>
-                ) : (
-                  <ArtifactList
-                    artifacts={artifacts}
-                    onSelectArtifact={onSelectArtifact}
-                  />
-                )}
-              </div>
-            )}
-          </ScrollArea>
-
-          {/* Execute Button (only in tasks tab) */}
-          {activeTab === "tasks" && showExecuteButton && tasks.length > 0 && (
-            <div className="p-3 border-t border-border">
-              <ExecuteButton
-                onClick={onExecute}
-                disabled={!canExecute}
-                isExecuting={isExecuting}
-                pendingTaskCount={pendingTaskCount}
-              />
-            </div>
+          {activeTab === "tasks" ? (
+            <TasksPanelContent
+              tasks={tasks}
+              isExtractingTasks={isExtractingTasks}
+              canExecute={canExecute}
+              isExecuting={isExecuting}
+              pendingTaskCount={pendingTaskCount}
+              onExecute={onExecute}
+              showExecuteButton={showExecuteButton}
+            />
+          ) : (
+            <ArtifactsPanelContent
+              artifacts={artifacts}
+              onSelectArtifact={onSelectArtifact}
+            />
           )}
         </div>
       )}

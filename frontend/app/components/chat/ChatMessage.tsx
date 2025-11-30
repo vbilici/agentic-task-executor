@@ -175,11 +175,10 @@ export function ChatMessage({
     <div className={cn("flex p-4", isAssistant ? "justify-start" : "justify-end")}>
       <div
         className={cn(
-          "max-w-[80%]",
-          !isAssistant && "bg-muted/50 rounded-2xl px-4 py-2"
+          isAssistant ? "w-full" : "max-w-[80%] bg-muted/50 rounded-2xl px-4 py-2"
         )}
       >
-        <div className={cn("text-sm", markdownProseClasses)}>
+        <div className={cn("text-base", markdownProseClasses)}>
           <ReactMarkdown>{content}</ReactMarkdown>
           {isStreaming && (
             <span className="inline-block w-2 h-4 ml-1 bg-primary animate-pulse" />
