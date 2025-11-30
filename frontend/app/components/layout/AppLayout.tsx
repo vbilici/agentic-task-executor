@@ -6,6 +6,7 @@ import { useSidebarState } from "@/hooks/useSidebarState";
 import { SessionListItem } from "@/components/session/SessionListItem";
 import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 import { Button } from "@/components/ui/button";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 export function AppLayout() {
   const navigate = useNavigate();
@@ -31,7 +32,7 @@ export function AppLayout() {
       {/* Left Sidebar - Sessions */}
       <aside
         className={cn(
-          "border-r border-border bg-card transition-all duration-200",
+          "h-screen sticky top-0 border-r border-border bg-card transition-all duration-200",
           isLeftCollapsed ? "w-14" : "w-64"
         )}
       >
@@ -81,27 +82,30 @@ export function AppLayout() {
 
           {/* Session List */}
           <div className="flex-1 overflow-y-auto p-2">
-            {isLoading ? (
-              <div className="flex justify-center py-4">
-                <LoadingIndicator size="sm" />
-              </div>
-            ) : sessions.length === 0 ? (
-              !isLeftCollapsed && (
-                <p className="text-center text-sm text-muted-foreground py-4">
-                  No sessions yet
-                </p>
-              )
-            ) : (
-              sessions.map((session) => (
-                <SessionListItem
-                  key={session.id}
-                  session={session}
-                  isActive={session.id === sessionId}
-                  onSelect={() => handleSelectSession(session.id)}
-                  onDelete={() => handleDeleteSession(session.id)}
-                />
-              ))
-            )}
+            <TooltipProvider delayDuration={300}>
+              {isLoading ? (
+                <div className="flex justify-center py-4">
+                  <LoadingIndicator size="sm" />
+                </div>
+              ) : sessions.length === 0 ? (
+                !isLeftCollapsed && (
+                  <p className="text-center text-sm text-muted-foreground py-4">
+                    No sessions yet
+                  </p>
+                )
+              ) : (
+                sessions.map((session) => (
+                  <SessionListItem
+                    key={session.id}
+                    session={session}
+                    isActive={session.id === sessionId}
+                    isCollapsed={isLeftCollapsed}
+                    onSelect={() => handleSelectSession(session.id)}
+                    onDelete={() => handleDeleteSession(session.id)}
+                  />
+                ))
+              )}
+            </TooltipProvider>
           </div>
         </div>
       </aside>

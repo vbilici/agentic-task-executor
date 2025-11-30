@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MoreVertical, Trash2 } from "lucide-react";
+import { MoreVertical, Trash2, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Session } from "@/types/api";
 import { Badge } from "@/components/ui/badge";
@@ -19,10 +19,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface SessionListItemProps {
   session: Session;
   isActive: boolean;
+  isCollapsed?: boolean;
   onSelect: () => void;
   onDelete: () => void;
 }
@@ -33,14 +39,79 @@ const statusColors = {
   completed: "bg-green-100 text-green-800",
 };
 
+const statusDotColors = {
+  planning: "bg-yellow-500",
+  executing: "bg-blue-500",
+  completed: "bg-green-500",
+};
+
 export function SessionListItem({
   session,
   isActive,
+  isCollapsed = false,
   onSelect,
   onDelete,
 }: SessionListItemProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  // Collapsed view: icon with tooltip
+  if (isCollapsed) {
+    return (
+      <>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={onSelect}
+              className={cn(
+                "relative flex w-full items-center justify-center rounded-md p-2 transition-colors",
+                isActive
+                  ? "bg-accent text-accent-foreground"
+                  : "hover:bg-accent/50 text-muted-foreground"
+              )}
+              aria-label={session.title || "New Session"}
+            >
+              <MessageSquare className="h-5 w-5" />
+              <span
+                className={cn(
+                  "absolute bottom-1 right-1 h-2 w-2 rounded-full",
+                  statusDotColors[session.status]
+                )}
+              />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            <p className="font-medium">{session.title || "New Session"}</p>
+            <p className="text-xs text-muted-foreground capitalize">
+              {session.status}
+            </p>
+          </TooltipContent>
+        </Tooltip>
+
+        <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Session?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete the session and all its tasks, messages, and artifacts.
+                This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={onDelete}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </>
+    );
+  }
+
+  // Expanded view: full item with title and badge
   return (
     <>
     <div

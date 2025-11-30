@@ -52,7 +52,7 @@ export function RightSidebar({
   }
 
   return (
-    <div className="flex h-full border-l border-border">
+    <div className="flex h-screen sticky top-0 border-l border-border">
       {/* Content Panel */}
       {activeTab && (
         <div className="w-72 flex flex-col bg-card">
