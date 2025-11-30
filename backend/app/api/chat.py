@@ -7,10 +7,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from app.models.base import MessageRole
-from app.models.message import MessageCreate
 from app.services.agent_service import agent_service
-from app.services.message_service import message_service
 from app.services.session_service import session_service
 from app.services.task_service import task_service
 
@@ -25,20 +22,14 @@ class ChatRequest(BaseModel):
 
 @router.post("/{session_id}/chat")
 async def chat(session_id: UUID, request: ChatRequest) -> StreamingResponse:
-    """Send a chat message and stream the response via SSE."""
+    """Send a chat message and stream the response via SSE.
+
+    Messages are stored via LangGraph checkpointer, not in a separate table.
+    """
     # Verify session exists
     session = await session_service.get(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
-
-    # Save user message
-    await message_service.create(
-        MessageCreate(
-            session_id=session_id,
-            role=MessageRole.USER,
-            content=request.message,
-        )
-    )
 
     # Update session title if it's the first message
     if session.title == "New Session":
@@ -47,16 +38,13 @@ async def chat(session_id: UUID, request: ChatRequest) -> StreamingResponse:
 
     async def event_stream():
         """Generate SSE events from agent."""
-        accumulated_content = ""
-        tasks_generated = []
+        tasks_generated: list[dict] = []
 
         try:
             async for event in agent_service.chat(session_id, request.message):
                 event_type = event.get("type")
 
                 if event_type == "content":
-                    content = event.get("content", "")
-                    accumulated_content += content
                     yield f"event: content\ndata: {json.dumps(event)}\n\n"
 
                 elif event_type == "tasks_updated":
@@ -67,16 +55,6 @@ async def chat(session_id: UUID, request: ChatRequest) -> StreamingResponse:
                     yield f"event: error\ndata: {json.dumps(event)}\n\n"
 
                 elif event_type == "done":
-                    # Save assistant message
-                    if accumulated_content:
-                        await message_service.create(
-                            MessageCreate(
-                                session_id=session_id,
-                                role=MessageRole.ASSISTANT,
-                                content=accumulated_content,
-                            )
-                        )
-
                     # Save tasks to database
                     if tasks_generated:
                         # Delete existing tasks first

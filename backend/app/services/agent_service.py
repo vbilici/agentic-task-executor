@@ -4,7 +4,7 @@ from collections.abc import AsyncIterator
 from typing import Any
 from uuid import UUID
 
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
@@ -125,15 +125,14 @@ class AgentService:
                         if chunk and hasattr(chunk, "content") and chunk.content:
                             yield {"type": "content", "content": chunk.content}
 
-                elif event_type == "on_chain_end":
+                elif event_type == "on_chain_end" and node_name == "extract_tasks":
                     # Check for tasks from the extract_tasks node
-                    if node_name == "extract_tasks":
-                        output = event.get("data", {}).get("output", {})
-                        if isinstance(output, dict):
-                            tasks = output.get("tasks", [])
-                            if tasks and not tasks_yielded:
-                                yield {"type": "tasks_updated", "tasks": tasks}
-                                tasks_yielded = True
+                    output = event.get("data", {}).get("output", {})
+                    if isinstance(output, dict):
+                        tasks = output.get("tasks", [])
+                        if tasks and not tasks_yielded:
+                            yield {"type": "tasks_updated", "tasks": tasks}
+                            tasks_yielded = True
 
             yield {"type": "done"}
 
@@ -159,6 +158,46 @@ class AgentService:
         if state and state.values:
             return state.values.get("tasks", [])
         return []
+
+    async def get_messages_from_state(self, session_id: UUID) -> list[dict[str, Any]]:
+        """Get conversation messages from the agent checkpoint state.
+
+        Args:
+            session_id: The session UUID
+
+        Returns:
+            List of message dicts with role and content
+        """
+        if not self._initialized:
+            await self.initialize()
+
+        graph = get_planning_graph_builder().compile(checkpointer=self._checkpointer)
+        config = {"configurable": {"thread_id": self._get_thread_id(session_id)}}
+
+        state = await graph.aget_state(config)
+        if not state or not state.values:
+            return []
+
+        messages = state.values.get("messages", [])
+        result = []
+
+        for msg in messages:
+            if isinstance(msg, HumanMessage):
+                result.append(
+                    {
+                        "role": "user",
+                        "content": msg.content,
+                    }
+                )
+            elif isinstance(msg, AIMessage):
+                result.append(
+                    {
+                        "role": "assistant",
+                        "content": msg.content,
+                    }
+                )
+
+        return result
 
     def tasks_to_create_models(
         self,

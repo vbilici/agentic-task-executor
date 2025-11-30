@@ -35,12 +35,15 @@ export interface Task {
 // Message types
 export type MessageRole = "user" | "assistant" | "system";
 
+// Messages from checkpoint only have role and content
+// Local messages (before sync) may have additional fields
 export interface Message {
-  id: string;
-  sessionId: string;
   role: MessageRole;
   content: string;
-  createdAt: string;
+  // Optional fields - only present for locally created messages
+  id?: string;
+  sessionId?: string;
+  createdAt?: string;
 }
 
 // Artifact types

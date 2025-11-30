@@ -27,3 +27,14 @@ class Message(MessageBase):
     id: UUID
     session_id: UUID
     created_at: datetime
+
+
+class CheckpointMessage(BaseDBModel):
+    """Message from LangGraph checkpoint state.
+
+    Simpler model without database fields, used when fetching
+    conversation history from the agent checkpoint.
+    """
+
+    role: str  # "user" or "assistant"
+    content: str

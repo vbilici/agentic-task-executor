@@ -40,18 +40,11 @@ export function SessionPage() {
           break;
         case "done":
           // Add the streamed message to the messages list
-          // Use clean content from server (without JSON blocks) if available
           const finalContent = event.content || streamingContentRef.current;
           if (finalContent) {
             setMessages((prev) => [
               ...prev,
-              {
-                id: crypto.randomUUID(),
-                sessionId: sessionId!,
-                role: "assistant",
-                content: finalContent,
-                createdAt: new Date().toISOString(),
-              },
+              { role: "assistant", content: finalContent },
             ]);
           }
           setStreamingContent("");
@@ -91,15 +84,8 @@ export function SessionPage() {
   const handleSendMessage = async (message: string) => {
     if (!sessionId || isSending) return;
 
-    // Add user message immediately
-    const userMessage: Message = {
-      id: crypto.randomUUID(),
-      sessionId,
-      role: "user",
-      content: message,
-      createdAt: new Date().toISOString(),
-    };
-    setMessages((prev) => [...prev, userMessage]);
+    // Add user message immediately (optimistic update)
+    setMessages((prev) => [...prev, { role: "user", content: message }]);
     setIsSending(true);
     setStreamingContent("");
 

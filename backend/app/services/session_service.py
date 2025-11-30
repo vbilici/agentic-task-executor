@@ -6,9 +6,10 @@ from app.core.database import get_supabase_client
 from app.models.artifact import ArtifactSummary
 from app.models.base import SessionStatus
 from app.models.data_item import DataItem
-from app.models.message import Message
+from app.models.message import CheckpointMessage
 from app.models.session import Session, SessionDetail
 from app.models.task import Task
+from app.services.agent_service import agent_service
 
 
 class SessionService:
@@ -45,19 +46,12 @@ class SessionService:
         if not session:
             return None
 
-        # Fetch related data
+        # Fetch related data from database
         tasks_result = (
             self.client.table("tasks")
             .select("*")
             .eq("session_id", str(session_id))
             .order("order")
-            .execute()
-        )
-        messages_result = (
-            self.client.table("messages")
-            .select("*")
-            .eq("session_id", str(session_id))
-            .order("created_at")
             .execute()
         )
         artifacts_result = (
@@ -75,10 +69,13 @@ class SessionService:
             .execute()
         )
 
+        # Fetch messages from LangGraph checkpoint state
+        checkpoint_messages = await agent_service.get_messages_from_state(session_id)
+
         return SessionDetail(
             **session.model_dump(),
             tasks=[Task(**t) for t in tasks_result.data],
-            messages=[Message(**m) for m in messages_result.data],
+            messages=[CheckpointMessage(**m) for m in checkpoint_messages],
             artifacts=[ArtifactSummary(**a) for a in artifacts_result.data],
             data_items=[DataItem(**d) for d in data_items_result.data],
         )

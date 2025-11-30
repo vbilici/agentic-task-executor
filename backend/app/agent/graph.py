@@ -2,12 +2,11 @@
 
 from typing import Literal
 
-from langchain_core.messages import AIMessage, SystemMessage
+from langchain_core.messages import SystemMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, StateGraph
 from pydantic import BaseModel, Field
 
-from app.agent.prompts import get_planning_prompt
 from app.agent.state import PlanningState
 from app.core.config import get_settings
 

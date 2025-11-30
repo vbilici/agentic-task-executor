@@ -21,9 +21,9 @@ export function ChatMessageList({
   return (
     <ScrollArea className="flex-1">
       <div className="divide-y divide-border">
-        {messages.map((message) => (
+        {messages.map((message, index) => (
           <ChatMessage
-            key={message.id}
+            key={index}
             role={message.role}
             content={message.content}
           />
