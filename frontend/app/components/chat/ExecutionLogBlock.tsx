@@ -13,6 +13,7 @@ import type { ExecutionEventType } from "@/types/api";
 const MAIN_EVENT_TYPES: ExecutionEventType[] = [
   "task_selected",
   "task_completed",
+  "reflection",
   "error",
   "done",
 ];
