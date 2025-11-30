@@ -10,11 +10,13 @@ from app.agent.tools.datetime_tool import (
     get_day_of_week,
 )
 from app.agent.tools.read_artifact import list_artifacts, read_artifact
+from app.agent.tools.web_fetch import web_fetch
 from app.agent.tools.web_search import web_search
 
 # All available tools for the execution agent
 ALL_TOOLS = [
     web_search,
+    web_fetch,
     calculator,
     get_current_datetime,
     format_date,
@@ -28,6 +30,7 @@ ALL_TOOLS = [
 
 __all__ = [
     "web_search",
+    "web_fetch",
     "calculator",
     "get_current_datetime",
     "format_date",
