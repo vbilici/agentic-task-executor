@@ -1,5 +1,6 @@
 """LangGraph execution agent definition for task execution with tools."""
 
+import re
 from collections.abc import AsyncIterator
 from typing import Any, Literal
 from uuid import UUID
@@ -30,11 +31,31 @@ EXECUTION_PROMPT = """You are a task execution agent that completes tasks using 
 Title: {task_title}
 Description: {task_description}
 
+## Session Context (USE THESE EXACT VALUES)
+Session ID: {session_id}
+Current Task ID: {task_id}
+
+IMPORTANT: When calling create_artifact, you MUST use the exact session_id above: {session_id}
+
 ## Instructions
 1. Analyze what needs to be done based on the task title and description
 2. Use the available tools to gather information or perform calculations
 3. Work through the task step by step
 4. When finished, provide a clear summary of what you accomplished
+5. Create an artifact for ANY valuable output the user will want to reference later
+
+## When to Create Artifacts (IMPORTANT)
+You MUST create an artifact when your task produces:
+- Research findings or comparisons (venue options, product comparisons, etc.)
+- Plans, agendas, or schedules
+- Lists of recommendations or options
+- Summaries of information gathered
+- Any structured document the user will need later
+- Contact information, pricing quotes, or booking details
+- Checklists or action items
+
+Basically: If the task result has VALUE that the user might want to see, reference, or download later - CREATE AN ARTIFACT.
+Do NOT just describe what you found in chat - save it as an artifact so the user has it.
 
 ## Available Tools
 - web_search: Search the internet for current information
@@ -44,11 +65,26 @@ Description: {task_description}
 - calculate_date_difference: Calculate time between two dates
 - add_time_to_date: Add or subtract time from a date
 - get_day_of_week: Get the day of week for any date
+- create_artifact: Create a document, note, summary, or plan that will be saved
+- read_artifact: Read content from a previously created artifact
+- list_artifacts: List all artifacts in the current session
+
+## CRITICAL - Date and Time Awareness
+- You do NOT know the current date or time! Your training data is outdated.
+- ALWAYS use get_current_datetime FIRST before any task involving:
+  - Weather forecasts or conditions
+  - Scheduling or calendars
+  - News or current events
+  - Any date calculations or comparisons
+  - Relative dates like "next week", "tomorrow", "in December"
+- When searching for time-sensitive information, INCLUDE THE CORRECT YEAR in your search query
+- Example: If user asks about "weather for December 2nd", first get current date, then search "weather [city] December 2 2025" (using the actual current year)
 
 ## Guidelines
 - Be thorough but efficient
 - If you need information, use web_search
 - For any calculations, use the calculator tool
+- ALWAYS create an artifact when you produce valuable content (research, plans, lists, summaries)
 - Provide clear, actionable results
 - If a task cannot be completed, explain why
 
@@ -115,6 +151,8 @@ def create_execution_graph() -> StateGraph:
                 prompt = EXECUTION_PROMPT.format(
                     task_title=task_title,
                     task_description=task_description or "No additional details",
+                    session_id=state["session_id"],
+                    task_id=state["current_task_id"],
                 )
                 system_msg = SystemMessage(content=prompt)
                 messages = [system_msg, *messages]
@@ -325,8 +363,30 @@ Please complete this task using the available tools and the context from previou
                 # Tool finished
                 tool_name = event.get("name", "unknown")
                 tool_output = event.get("data", {}).get("output", "")
-                # Truncate long outputs for the event
                 output_str = str(tool_output)
+
+                # Check if an artifact was created
+                if (
+                    tool_name == "create_artifact"
+                    and "Successfully created" in output_str
+                ):
+                    # Extract artifact info from the output
+                    # Output format: "Successfully created {type} artifact '{name}' (ID: {id})"
+                    match = re.search(
+                        r"Successfully created (\w+) artifact '(.+)' \(ID: ([^)]+)\)",
+                        output_str,
+                    )
+                    if match:
+                        artifact_type, artifact_name, artifact_id = match.groups()
+                        yield {
+                            "type": "artifact_created",
+                            "taskId": task_id,
+                            "artifactId": artifact_id,
+                            "name": artifact_name,
+                            "artifactType": artifact_type,
+                        }
+
+                # Truncate long outputs for the event
                 if len(output_str) > 500:
                     output_str = output_str[:500] + "..."
                 yield {

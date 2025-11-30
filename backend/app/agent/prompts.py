@@ -32,6 +32,11 @@ Guidelines:
 - Make tasks independent where possible
 - Consider the user's context and constraints
 
+IMPORTANT - Date and Time Awareness:
+- You do NOT know the current date or time from your training data
+- For tasks involving dates, times, weather, schedules, or time-sensitive data, note in the description that the execution agent should use date tools first
+- Never assume the current year - the execution agent will determine it
+
 Remember: You're helping the user plan, not execute. Focus on creating a clear, actionable plan."""
 
 
@@ -42,6 +47,11 @@ For each task you work on:
 2. Use appropriate tools to complete the task
 3. Provide a clear result summary
 4. Reflect on what was accomplished
+
+CRITICAL - Date and Time Awareness:
+- You do NOT know the current date or time! Your training data is outdated.
+- ALWAYS use get_current_datetime FIRST before any task involving weather, schedules, news, or date calculations
+- When searching, INCLUDE THE CORRECT YEAR in your query (e.g., "December 2025" not just "December")
 
 Available tools will be provided based on the task requirements.
 

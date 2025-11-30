@@ -145,21 +145,21 @@
 
 ### Stream A: Backend [US3]
 
-- [ ] T062 [P] [US3] Create ArtifactService (create, get, list, download) in `backend/app/services/artifact_service.py`
-- [ ] T063 [US3] Create create_artifact tool in `backend/app/agent/tools/create_artifact.py` (depends on T062)
-- [ ] T064 [US3] Create read_artifact tool in `backend/app/agent/tools/read_artifact.py` (depends on T062)
-- [ ] T065 [US3] Create artifacts router in `backend/app/api/artifacts.py` (depends on T062)
-- [ ] T066 [US3] Add artifact tools to execution graph in `backend/app/agent/execution_graph.py`
+- [x] T062 [P] [US3] Create ArtifactService (create, get, list, download) in `backend/app/services/artifact_service.py`
+- [x] T063 [US3] Create create_artifact tool in `backend/app/agent/tools/create_artifact.py` (depends on T062)
+- [x] T064 [US3] Create read_artifact tool in `backend/app/agent/tools/read_artifact.py` (depends on T062)
+- [x] T065 [US3] Create artifacts router in `backend/app/api/artifacts.py` (depends on T062)
+- [x] T066 [US3] Add artifact tools to execution graph in `backend/app/agent/execution_graph.py`
 
 ### Stream B: Frontend [US3]
 
-- [ ] T067 [P] [US3] Create ArtifactList component in `frontend/app/components/artifacts/ArtifactList.tsx`
-- [ ] T068 [P] [US3] Create ArtifactListItem component in `frontend/app/components/artifacts/ArtifactListItem.tsx`
-- [ ] T069 [P] [US3] Create ArtifactModal component (full-screen) in `frontend/app/components/artifacts/ArtifactModal.tsx`
-- [ ] T070 [P] [US3] Create ArtifactPreview component in `frontend/app/components/artifacts/ArtifactPreview.tsx`
-- [ ] T071 [P] [US3] Create markdown renderer utility in `frontend/app/lib/markdown.ts`
-- [ ] T072 [US3] Wire artifact sidebar to session data in `frontend/app/components/layout/ArtifactSidebar.tsx`
-- [ ] T073 [US3] Add artifact_created SSE handler in `frontend/app/pages/SessionPage.tsx`
+- [x] T067 [P] [US3] Create ArtifactList component in `frontend/app/components/artifacts/ArtifactList.tsx`
+- [x] T068 [P] [US3] Create ArtifactListItem component in `frontend/app/components/artifacts/ArtifactListItem.tsx`
+- [x] T069 [P] [US3] Create ArtifactModal component (full-screen) in `frontend/app/components/artifacts/ArtifactModal.tsx`
+- [x] T070 [P] [US3] Create ArtifactPreview component in `frontend/app/components/artifacts/ArtifactPreview.tsx`
+- [x] T071 [P] [US3] Create markdown renderer utility in `frontend/app/lib/markdown.ts`
+- [x] T072 [US3] Wire artifact sidebar to session data in `frontend/app/components/layout/ArtifactSidebar.tsx`
+- [x] T073 [US3] Add artifact_created SSE handler in `frontend/app/pages/SessionPage.tsx`
 
 **Checkpoint**: US3 complete - Users can see artifacts created by agent and view/download them
 

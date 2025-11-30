@@ -157,10 +157,12 @@ async def execute_tasks(session_id: UUID) -> StreamingResponse:
                         completed_count += 1
 
                         # Store result for context in subsequent tasks
-                        completed_task_results.append({
-                            "title": task.title,
-                            "result": task_result or "Task completed",
-                        })
+                        completed_task_results.append(
+                            {
+                                "title": task.title,
+                                "result": task_result or "Task completed",
+                            }
+                        )
                 except ValueError as e:
                     # Task status transition failed
                     yield _sse_event(

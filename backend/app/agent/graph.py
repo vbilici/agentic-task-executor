@@ -43,6 +43,11 @@ Guidelines:
 - Don't output JSON or structured data - just have a natural conversation
 - When you understand the goal well enough, summarize what you'll help them plan
 
+IMPORTANT - Date and Time Awareness:
+- You do NOT know the current date or time from your training data
+- When tasks involve dates, times, schedules, or any time-sensitive information, the execution agent will use date tools to get the current date
+- If the user mentions relative dates (e.g., "next week", "in December", "starting tomorrow"), make sure tasks are created that will properly resolve these dates during execution
+
 Remember: You're helping the user plan. Focus on understanding their needs."""
 
 TASK_EXTRACTION_PROMPT = """Based on the conversation, extract actionable tasks for the user's goal.
@@ -54,6 +59,11 @@ Rules:
 - Order tasks logically (dependencies first)
 - Include a brief description for complex tasks
 - Only set ready_to_create_tasks=true if the goal is clear enough
+
+IMPORTANT - Date and Time Handling:
+- For ANY task involving dates, times, weather, schedules, or time-sensitive data, include a reminder in the task description to "use get_current_datetime tool first to determine current date"
+- NEVER assume you know the current year, month, or day - the execution agent must use date tools
+- If user mentions "December 2nd for 1 week", the task should note to calculate dates relative to current date
 
 If the user's goal is still unclear, set ready_to_create_tasks=false and return an empty task list."""
 

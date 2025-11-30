@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, FileText } from "lucide-react";
 import { api } from "@/services/api";
 import { useSSE } from "@/hooks/useSSE";
 import type {
@@ -9,13 +9,18 @@ import type {
   ExecutionEvent,
   SessionDetail,
   TaskStatus,
+  ArtifactSummary,
+  ArtifactType,
 } from "@/types/api";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { ChatMessageList, type ChatMessageItem } from "@/components/chat/ChatMessageList";
 import { TaskList } from "@/components/session/TaskList";
 import { ExecuteButton } from "@/components/session/ExecuteButton";
 import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
+import { ArtifactSidebar } from "@/components/layout/ArtifactSidebar";
+import { ArtifactModal } from "@/components/artifacts/ArtifactModal";
 
 export function SessionPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -25,6 +30,7 @@ export function SessionPage() {
   const [session, setSession] = useState<SessionDetail | null>(null);
   const [messages, setMessages] = useState<ChatMessageItem[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [artifacts, setArtifacts] = useState<ArtifactSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Chat streaming state
@@ -33,6 +39,10 @@ export function SessionPage() {
 
   // Execution state
   const [isExecuting, setIsExecuting] = useState(false);
+
+  // Artifact sidebar state
+  const [isArtifactSidebarCollapsed, setIsArtifactSidebarCollapsed] = useState(true);
+  const [selectedArtifactId, setSelectedArtifactId] = useState<string | null>(null);
 
   // Reference to tasks for execution event handler
   const tasksRef = useRef<Task[]>([]);
@@ -144,6 +154,21 @@ export function SessionPage() {
             )
           );
           break;
+        case "artifact_created": {
+          // Add new artifact to the list
+          const newArtifact: ArtifactSummary = {
+            id: event.artifactId,
+            sessionId: sessionId || "",
+            taskId: event.taskId,
+            name: event.name,
+            type: event.artifactType as ArtifactType,
+            createdAt: new Date().toISOString(),
+          };
+          setArtifacts((prev) => [...prev, newArtifact]);
+          // Auto-expand sidebar when artifact is created
+          setIsArtifactSidebarCollapsed(false);
+          break;
+        }
         case "done":
           setIsExecuting(false);
           // Update session status
@@ -158,7 +183,7 @@ export function SessionPage() {
           }
           break;
       }
-    }, [getTaskTitle]),
+    }, [getTaskTitle, sessionId]),
   });
 
   const loadSession = useCallback(async () => {
@@ -169,6 +194,11 @@ export function SessionPage() {
       setSession(sessionData);
       setMessages(sessionData.messages);
       setTasks(sessionData.tasks);
+      setArtifacts(sessionData.artifacts);
+      // Auto-expand sidebar if there are artifacts
+      if (sessionData.artifacts.length > 0) {
+        setIsArtifactSidebarCollapsed(false);
+      }
     } catch (error) {
       console.error("Failed to load session:", error);
       navigate("/");
@@ -215,6 +245,18 @@ export function SessionPage() {
     connectExecution(executeUrl, {});
   };
 
+  const handleToggleArtifactSidebar = () => {
+    setIsArtifactSidebarCollapsed((prev) => !prev);
+  };
+
+  const handleSelectArtifact = (artifactId: string) => {
+    setSelectedArtifactId(artifactId);
+  };
+
+  const handleCloseArtifactModal = () => {
+    setSelectedArtifactId(null);
+  };
+
   // Count pending tasks
   const pendingTaskCount = tasks.filter(
     (task) => task.status === "pending"
@@ -251,6 +293,20 @@ export function SessionPage() {
             </h1>
             <p className="text-xs text-muted-foreground">{session?.status}</p>
           </div>
+          {/* Artifact toggle button in header when sidebar is collapsed */}
+          {isArtifactSidebarCollapsed && artifacts.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleToggleArtifactSidebar}
+              className="flex items-center gap-2"
+            >
+              <FileText className="h-4 w-4" />
+              <Badge variant="secondary" className="text-xs">
+                {artifacts.length}
+              </Badge>
+            </Button>
+          )}
         </header>
 
         {/* Messages */}
@@ -292,6 +348,25 @@ export function SessionPage() {
           </div>
         )}
       </aside>
+
+      {/* Artifact Sidebar */}
+      <aside className={isArtifactSidebarCollapsed ? "w-12" : "w-72"}>
+        <ArtifactSidebar
+          artifacts={artifacts}
+          isCollapsed={isArtifactSidebarCollapsed}
+          onToggle={handleToggleArtifactSidebar}
+          onSelectArtifact={handleSelectArtifact}
+        />
+      </aside>
+
+      {/* Artifact Modal */}
+      {selectedArtifactId && sessionId && (
+        <ArtifactModal
+          sessionId={sessionId}
+          artifactId={selectedArtifactId}
+          onClose={handleCloseArtifactModal}
+        />
+      )}
     </div>
   );
 }
