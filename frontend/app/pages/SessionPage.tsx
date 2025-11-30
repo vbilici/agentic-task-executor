@@ -31,6 +31,7 @@ export function SessionPage() {
   // Chat streaming state
   const [streamingContent, setStreamingContent] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [isExtractingTasks, setIsExtractingTasks] = useState(false);
 
   // Execution state
   const [isExecuting, setIsExecuting] = useState(false);
@@ -59,7 +60,11 @@ export function SessionPage() {
         case "content":
           setStreamingContent((prev) => prev + event.content);
           break;
+        case "tasks_extracting":
+          setIsExtractingTasks(true);
+          break;
         case "tasks_updated":
+          setIsExtractingTasks(false);
           setTasks(event.tasks);
           break;
         case "done": {
@@ -73,12 +78,14 @@ export function SessionPage() {
           }
           setStreamingContent("");
           setIsSending(false);
+          setIsExtractingTasks(false);
           break;
         }
         case "error":
           console.error("Chat error:", event.error);
           setStreamingContent("");
           setIsSending(false);
+          setIsExtractingTasks(false);
           break;
       }
     }, []),
@@ -293,6 +300,7 @@ export function SessionPage() {
               <ChatMessageList
                 messages={messages}
                 streamingContent={streamingContent}
+                isExtractingTasks={isExtractingTasks}
               />
             </div>
 
@@ -322,6 +330,7 @@ export function SessionPage() {
         pendingTaskCount={pendingTaskCount}
         onExecute={handleExecute}
         showExecuteButton={session?.status !== "completed"}
+        isExtractingTasks={isExtractingTasks}
       />
 
       {/* Artifact Modal */}

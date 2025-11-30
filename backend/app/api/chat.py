@@ -47,6 +47,9 @@ async def chat(session_id: UUID, request: ChatRequest) -> StreamingResponse:
                 if event_type == "content":
                     yield f"event: content\ndata: {json.dumps(event)}\n\n"
 
+                elif event_type == "tasks_extracting":
+                    yield f"event: tasks_extracting\ndata: {json.dumps(event)}\n\n"
+
                 elif event_type == "tasks_updated":
                     # Store tasks but don't send yet - wait until saved to DB
                     tasks_generated = event.get("tasks", [])

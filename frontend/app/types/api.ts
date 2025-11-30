@@ -79,11 +79,15 @@ export interface DataItem {
 }
 
 // Chat SSE Event types
-export type ChatEventType = "content" | "tasks_updated" | "error" | "done";
+export type ChatEventType = "content" | "tasks_extracting" | "tasks_updated" | "error" | "done";
 
 export interface ChatContentEvent {
   type: "content";
   content: string;
+}
+
+export interface ChatTasksExtractingEvent {
+  type: "tasks_extracting";
 }
 
 export interface ChatTasksUpdatedEvent {
@@ -103,6 +107,7 @@ export interface ChatDoneEvent {
 
 export type ChatEvent =
   | ChatContentEvent
+  | ChatTasksExtractingEvent
   | ChatTasksUpdatedEvent
   | ChatErrorEvent
   | ChatDoneEvent;

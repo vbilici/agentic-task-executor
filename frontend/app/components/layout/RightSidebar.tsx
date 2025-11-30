@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ListTodo, FileText } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ListTodo, FileText, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Task, ArtifactSummary } from "@/types/api";
 import { TaskItem } from "@/components/session/TaskItem";
@@ -20,6 +20,8 @@ interface RightSidebarProps {
   pendingTaskCount: number;
   onExecute: () => void;
   showExecuteButton: boolean;
+  // Task extraction indicator
+  isExtractingTasks?: boolean;
   // Optional: control which tab is initially open
   defaultTab?: TabType;
 }
@@ -33,6 +35,7 @@ export function RightSidebar({
   pendingTaskCount,
   onExecute,
   showExecuteButton,
+  isExtractingTasks = false,
   defaultTab = null,
 }: RightSidebarProps) {
   const [activeTab, setActiveTab] = useState<TabType>(defaultTab);
@@ -42,9 +45,16 @@ export function RightSidebar({
     setActiveTab(activeTab === tab ? null : tab);
   };
 
+  // Auto-open tasks tab when tasks are updated or extraction starts
+  useEffect(() => {
+    if (isExtractingTasks || tasks.length > 0) {
+      setActiveTab("tasks");
+    }
+  }, [isExtractingTasks, tasks.length]);
+
   const hasTasks = tasks.length > 0;
   const hasArtifacts = artifacts.length > 0;
-  const hasContent = hasTasks || hasArtifacts;
+  const hasContent = hasTasks || hasArtifacts || isExtractingTasks;
 
   // Don't render anything if there's no content
   if (!hasContent) {
@@ -77,7 +87,13 @@ export function RightSidebar({
           <ScrollArea className="flex-1">
             {activeTab === "tasks" && (
               <div className="p-3">
-                {tasks.length === 0 ? (
+                {isExtractingTasks ? (
+                  <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                    <Loader2 className="h-8 w-8 mb-2 animate-spin" />
+                    <p className="text-sm font-medium">Generating tasks...</p>
+                    <p className="text-xs mt-1">Analyzing your goal</p>
+                  </div>
+                ) : tasks.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
                     <ListTodo className="h-8 w-8 mb-2 opacity-50" />
                     <p className="text-xs">No tasks yet</p>
@@ -127,7 +143,7 @@ export function RightSidebar({
       {/* Icon Strip - Always visible */}
       <div className="w-12 flex flex-col items-center bg-card py-3 gap-1">
         {/* Tasks Icon */}
-        {hasTasks && (
+        {(hasTasks || isExtractingTasks) && (
           <button
             onClick={() => handleTabClick("tasks")}
             className={cn(
@@ -138,12 +154,16 @@ export function RightSidebar({
             )}
             aria-label="Toggle tasks panel"
           >
-            <ListTodo className="h-5 w-5" />
+            {isExtractingTasks ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <ListTodo className="h-5 w-5" />
+            )}
             <Badge
               variant={activeTab === "tasks" ? "default" : "secondary"}
               className="text-xs px-1.5"
             >
-              {tasks.length}
+              {isExtractingTasks && tasks.length === 0 ? "..." : tasks.length}
             </Badge>
           </button>
         )}

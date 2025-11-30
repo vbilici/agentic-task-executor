@@ -7,7 +7,7 @@ from uuid import UUID
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from psycopg.rows import dict_row
-from psycopg_pool import AsyncConnectionPool
+from psycopg_pool import AsyncNullConnectionPool
 
 from app.agent.graph import get_planning_graph_builder
 from app.agent.state import PlanningState
@@ -18,7 +18,7 @@ from app.models.task import TaskCreate
 class AgentService:
     """Service for managing LangGraph agents with PostgreSQL persistence."""
 
-    _pool: AsyncConnectionPool | None = None
+    _pool: AsyncNullConnectionPool | None = None
     _checkpointer: AsyncPostgresSaver | None = None
     _initialized: bool = False
 
@@ -29,12 +29,11 @@ class AgentService:
 
         settings = get_settings()
 
-        # Create connection pool with autocommit and dict_row for checkpointer
+        # Use NullConnectionPool to avoid double-pooling with Supabase's PgBouncer
         # autocommit=True required for CREATE INDEX CONCURRENTLY in setup()
         # row_factory=dict_row required for checkpointer row access
-        pool = AsyncConnectionPool(
+        pool = AsyncNullConnectionPool(
             conninfo=settings.database_url,
-            max_size=20,
             open=False,
             kwargs={"autocommit": True, "row_factory": dict_row},
         )
@@ -81,6 +80,7 @@ class AgentService:
         Yields:
             Events dict with type and payload:
             - {"type": "content", "content": "..."} - Streamed text
+            - {"type": "tasks_extracting"} - Task extraction started
             - {"type": "tasks_updated", "tasks": [...]} - Task list updated
             - {"type": "done"} - Chat complete
             - {"type": "error", "error": "..."} - Error occurred
@@ -107,6 +107,7 @@ class AgentService:
 
         try:
             tasks_yielded = False
+            extracting_started = False
 
             # Stream events from the graph
             async for event in graph.astream_events(
@@ -124,6 +125,12 @@ class AgentService:
                         chunk = event.get("data", {}).get("chunk")
                         if chunk and hasattr(chunk, "content") and chunk.content:
                             yield {"type": "content", "content": chunk.content}
+
+                elif event_type == "on_chain_stream" and node_name == "chat":
+                    # Chat finished streaming, task extraction is about to start
+                    if not extracting_started:
+                        yield {"type": "tasks_extracting"}
+                        extracting_started = True
 
                 elif event_type == "on_chain_end" and node_name == "extract_tasks":
                     # Check for tasks from the extract_tasks node
