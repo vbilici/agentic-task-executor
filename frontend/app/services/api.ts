@@ -34,10 +34,12 @@ class ApiClient {
     });
 
     if (!response.ok) {
-      const error: ApiError = await response.json().catch(() => ({
-        code: "UNKNOWN_ERROR",
-        message: response.statusText,
-      }));
+      const errorBody = await response.json().catch(() => null);
+      const error: ApiError = {
+        detail: errorBody?.detail || response.statusText,
+        code: errorBody?.code,
+        message: errorBody?.message,
+      };
       throw error;
     }
 

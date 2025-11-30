@@ -244,8 +244,10 @@ export interface DataItemsListResponse {
   dataItems: DataItem[];
 }
 
+// FastAPI returns errors in this format
 export interface ApiError {
-  code: string;
-  message: string;
-  details?: Record<string, unknown>;
+  detail: string;
+  // Additional fields for custom error responses
+  code?: string;
+  message?: string;
 }

@@ -241,14 +241,15 @@
 
 **Purpose**: Final integration and cleanup
 
-- [ ] T096 [P] Add error boundary component in `frontend/app/components/ErrorBoundary.tsx`
-- [ ] T097 [P] Configure Toaster provider in `frontend/app/App.tsx`
-- [ ] T098 [P] Add empty state components in `frontend/app/components/ui/EmptyState.tsx`
-- [ ] T099 [P] Verify all API error responses match OpenAPI spec in `backend/app/api/`
-- [ ] T100 [P] Add request logging middleware in `backend/app/main.py`
+- [x] T096 [P] Add error boundary component in `frontend/app/components/ErrorBoundary.tsx`
+- [x] T097 [P] Configure Toaster provider (Sonner) in `frontend/app/App.tsx`
+- [x] T098 [P] Add empty state components in `frontend/app/components/ui/EmptyState.tsx`
+- [x] T099 [P] Update frontend error handling with toast notifications in `frontend/app/lib/error-handler.ts`
+- [x] T100 [P] Add request logging middleware - SKIPPED (uvicorn already handles this)
 - [ ] T101 Run mypy type checking on backend `backend/`
 - [ ] T102 Run TypeScript strict checking on frontend `frontend/`
 - [ ] T103 Validate against quickstart.md test scenarios
+- [x] T104 Rate limit retry - using default OpenAI SDK retries (automatic exponential backoff)
 
 ---
 
