@@ -1,10 +1,17 @@
 import { useEffect, useRef } from "react";
-import type { Message } from "@/types/api";
+import type { ExecutionEvent, MessageRole } from "@/types/api";
 import { ChatMessage } from "./ChatMessage";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
+// Message item that can include execution events
+export interface ChatMessageItem {
+  role: MessageRole;
+  content: string;
+  executionEvent?: ExecutionEvent & { taskTitle?: string };
+}
+
 interface ChatMessageListProps {
-  messages: Message[];
+  messages: ChatMessageItem[];
   streamingContent?: string;
 }
 
@@ -20,12 +27,13 @@ export function ChatMessageList({
 
   return (
     <ScrollArea className="flex-1">
-      <div className="divide-y divide-border">
+      <div>
         {messages.map((message, index) => (
           <ChatMessage
             key={index}
             role={message.role}
             content={message.content}
+            executionEvent={message.executionEvent}
           />
         ))}
         {streamingContent && (

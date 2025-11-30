@@ -17,6 +17,7 @@ dependencies = [
     "httpx>=0.28.0",
     "supabase>=2.0.0",
     "ruff>=0.14.7",
+    "langchain-tavily>=0.2.13",
 ]
 
 [project.optional-dependencies]

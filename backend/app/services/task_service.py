@@ -128,6 +128,129 @@ class TaskService:
             return 0
         return int(result.data[0]["order"]) + 1
 
+    async def get_pending_tasks(self, session_id: UUID) -> list[Task]:
+        """Get all pending tasks for a session, ordered by order field."""
+        result = (
+            self.client.table(self.table)
+            .select("*")
+            .eq("session_id", str(session_id))
+            .eq("status", TaskStatus.PENDING.value)
+            .order("order")
+            .execute()
+        )
+        return [Task(**row) for row in result.data]
+
+    async def start_task(self, task_id: UUID) -> Task:
+        """Start a task - changes status from pending to in_progress.
+
+        Args:
+            task_id: The task UUID to start
+
+        Returns:
+            The updated task
+
+        Raises:
+            ValueError: If task not found or invalid status transition
+        """
+        task = await self.get(task_id)
+        if not task:
+            raise ValueError(f"Task {task_id} not found")
+
+        if task.status != TaskStatus.PENDING:
+            raise ValueError(
+                f"Cannot start task: current status is {task.status.value}, "
+                "expected 'pending'"
+            )
+
+        result = (
+            self.client.table(self.table)
+            .update({"status": TaskStatus.IN_PROGRESS.value})
+            .eq("id", str(task_id))
+            .execute()
+        )
+        return Task(**result.data[0])
+
+    async def complete_task(
+        self,
+        task_id: UUID,
+        result_text: str,
+        reflection: str | None = None,
+    ) -> Task:
+        """Complete a task - changes status from in_progress to done.
+
+        Args:
+            task_id: The task UUID to complete
+            result_text: The result/output of the task execution
+            reflection: Optional agent reflection on the task
+
+        Returns:
+            The updated task
+
+        Raises:
+            ValueError: If task not found or invalid status transition
+        """
+        task = await self.get(task_id)
+        if not task:
+            raise ValueError(f"Task {task_id} not found")
+
+        if task.status != TaskStatus.IN_PROGRESS:
+            raise ValueError(
+                f"Cannot complete task: current status is {task.status.value}, "
+                "expected 'in_progress'"
+            )
+
+        data: dict[str, str] = {
+            "status": TaskStatus.DONE.value,
+            "result": result_text,
+        }
+        if reflection is not None:
+            data["reflection"] = reflection
+
+        result = (
+            self.client.table(self.table).update(data).eq("id", str(task_id)).execute()
+        )
+        return Task(**result.data[0])
+
+    async def fail_task(
+        self,
+        task_id: UUID,
+        error: str,
+    ) -> Task:
+        """Fail a task - changes status from in_progress to failed.
+
+        Args:
+            task_id: The task UUID to fail
+            error: The error message describing why the task failed
+
+        Returns:
+            The updated task
+
+        Raises:
+            ValueError: If task not found or invalid status transition
+        """
+        task = await self.get(task_id)
+        if not task:
+            raise ValueError(f"Task {task_id} not found")
+
+        if task.status != TaskStatus.IN_PROGRESS:
+            raise ValueError(
+                f"Cannot fail task: current status is {task.status.value}, "
+                "expected 'in_progress'"
+            )
+
+        result = (
+            self.client.table(self.table)
+            .update(
+                {
+                    "status": TaskStatus.FAILED.value,
+                    "result": error,
+                }
+            )
+            .eq("id", str(task_id))
+            .execute()
+        )
+        return Task(**result.data[0])
+
 
 # Singleton instance
 task_service = TaskService()

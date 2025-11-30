@@ -1,18 +1,148 @@
 import { cn } from "@/lib/utils";
-import type { MessageRole } from "@/types/api";
-import { Bot, User } from "lucide-react";
+import type { ExecutionEvent, MessageRole } from "@/types/api";
+import {
+  Bot,
+  User,
+  Play,
+  Wrench,
+  CheckCircle2,
+  XCircle,
+  MessageSquare,
+  AlertCircle,
+  Zap,
+} from "lucide-react";
+
+type ExecutionEventWithTitle = ExecutionEvent & { taskTitle?: string };
 
 interface ChatMessageProps {
   role: MessageRole;
   content: string;
   isStreaming?: boolean;
+  executionEvent?: ExecutionEventWithTitle;
+}
+
+function ExecutionEventMessage({ event }: { event: ExecutionEventWithTitle }) {
+  const getEventConfig = () => {
+    switch (event.type) {
+      case "task_selected":
+        return {
+          icon: Play,
+          bgColor: "bg-blue-50 dark:bg-blue-950",
+          iconColor: "text-blue-600",
+          label: "Starting task",
+          content: event.taskTitle || event.taskId,
+        };
+      case "tool_call":
+        return {
+          icon: Wrench,
+          bgColor: "bg-yellow-50 dark:bg-yellow-950",
+          iconColor: "text-yellow-600",
+          label: `Using ${event.tool}`,
+          content: typeof event.input === "object"
+            ? JSON.stringify(event.input, null, 2)
+            : String(event.input),
+        };
+      case "tool_result":
+        return {
+          icon: Zap,
+          bgColor: "bg-green-50 dark:bg-green-950",
+          iconColor: "text-green-600",
+          label: `Result from ${event.tool}`,
+          content: event.output,
+        };
+      case "task_completed":
+        return event.status === "done"
+          ? {
+              icon: CheckCircle2,
+              bgColor: "bg-green-50 dark:bg-green-950",
+              iconColor: "text-green-600",
+              label: "Task completed",
+              content: event.result || event.taskTitle,
+            }
+          : {
+              icon: XCircle,
+              bgColor: "bg-red-50 dark:bg-red-950",
+              iconColor: "text-red-600",
+              label: "Task failed",
+              content: event.result || event.taskTitle,
+            };
+      case "reflection":
+        return {
+          icon: MessageSquare,
+          bgColor: "bg-purple-50 dark:bg-purple-950",
+          iconColor: "text-purple-600",
+          label: "Reflection",
+          content: event.text,
+        };
+      case "error":
+        return {
+          icon: AlertCircle,
+          bgColor: "bg-red-50 dark:bg-red-950",
+          iconColor: "text-red-600",
+          label: "Error",
+          content: event.error,
+        };
+      case "done":
+        return {
+          icon: CheckCircle2,
+          bgColor: "bg-green-50 dark:bg-green-950",
+          iconColor: "text-green-600",
+          label: "Execution complete",
+          content: `${event.summary?.completed}/${event.summary?.total} tasks completed${event.summary?.failed ? `, ${event.summary.failed} failed` : ""}`,
+        };
+      default:
+        return {
+          icon: Zap,
+          bgColor: "bg-gray-50 dark:bg-gray-900",
+          iconColor: "text-gray-600",
+          label: "Event",
+          content: JSON.stringify(event),
+        };
+    }
+  };
+
+  const config = getEventConfig();
+  const Icon = config.icon;
+
+  return (
+    <div className={cn("flex gap-3 p-3 rounded-lg mx-4 my-2", config.bgColor)}>
+      <Icon className={cn("h-5 w-5 flex-shrink-0 mt-0.5", config.iconColor)} />
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-medium text-muted-foreground mb-1">
+          {config.label}
+        </p>
+        <p className="text-sm whitespace-pre-wrap break-words">
+          {config.content && config.content.length > 500
+            ? `${config.content.slice(0, 500)}...`
+            : config.content}
+        </p>
+      </div>
+    </div>
+  );
 }
 
 export function ChatMessage({
   role,
   content,
   isStreaming = false,
+  executionEvent,
 }: ChatMessageProps) {
+  // If this is an execution event, render it differently
+  if (executionEvent) {
+    return <ExecutionEventMessage event={executionEvent} />;
+  }
+
+  // System messages without execution events (like "Starting execution...")
+  if (role === "system") {
+    return (
+      <div className="flex justify-center py-2">
+        <span className="text-xs text-muted-foreground bg-muted px-3 py-1 rounded-full">
+          {content}
+        </span>
+      </div>
+    );
+  }
+
   const isAssistant = role === "assistant";
 
   return (

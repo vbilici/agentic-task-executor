@@ -28,7 +28,7 @@
 ### Stream B: Frontend Setup
 
 - [x] T005 [P] Create Vite + React + TypeScript project in `frontend/`
-- [ ] T006 [P] Initialize shadcn/ui using CLI: `pnpm dlx shadcn@latest init` in `frontend/`
+- [x] T006 [P] Initialize shadcn/ui using CLI: `pnpm dlx shadcn@latest init` in `frontend/`
 - [x] T007 [P] Configure TypeScript strict mode in `frontend/tsconfig.json`
 - [x] T008 [P] Create .env.example with VITE_API_URL in `frontend/.env.example`
 
@@ -117,21 +117,21 @@
 
 ### Stream A: Backend [US2]
 
-- [ ] T050 [P] [US2] Create web_search tool (Tavily) in `backend/app/agent/tools/web_search.py`
-- [ ] T051 [P] [US2] Create calculator tool in `backend/app/agent/tools/calculator.py`
-- [ ] T052 [P] [US2] Create datetime tool in `backend/app/agent/tools/datetime_tool.py`
-- [ ] T053 [US2] Create execution agent graph with tools in `backend/app/agent/execution_graph.py` (depends on T050-T052)
-- [ ] T054 [US2] Add execute endpoint with SSE streaming in `backend/app/api/execute.py` (depends on T053)
-- [ ] T055 [US2] Update TaskService with status transitions in `backend/app/services/task_service.py`
+- [x] T050 [P] [US2] Create web_search tool (Tavily) in `backend/app/agent/tools/web_search.py`
+- [x] T051 [P] [US2] Create calculator tool in `backend/app/agent/tools/calculator.py`
+- [x] T052 [P] [US2] Create datetime tool in `backend/app/agent/tools/datetime_tool.py`
+- [x] T053 [US2] Create execution agent graph with tools in `backend/app/agent/execution_graph.py` (depends on T050-T052)
+- [x] T054 [US2] Add execute endpoint with SSE streaming in `backend/app/api/execute.py` (depends on T053)
+- [x] T055 [US2] Update TaskService with status transitions in `backend/app/services/task_service.py`
 
 ### Stream B: Frontend [US2]
 
-- [ ] T056 [P] [US2] Create ExecuteButton component in `frontend/app/components/session/ExecuteButton.tsx`
-- [ ] T057 [P] [US2] Create ExecutionLog component in `frontend/app/components/session/ExecutionLog.tsx`
-- [ ] T058 [P] [US2] Create ExecutionLogEntry component in `frontend/app/components/session/ExecutionLogEntry.tsx`
-- [ ] T059 [P] [US2] Create ToolCallDisplay component in `frontend/app/components/session/ToolCallDisplay.tsx`
-- [ ] T060 [US2] Add execution SSE handler to Session page in `frontend/app/pages/SessionPage.tsx`
-- [ ] T061 [US2] Update TaskItem with in_progress/done/failed states in `frontend/app/components/session/TaskItem.tsx`
+- [x] T056 [P] [US2] Create ExecuteButton component in `frontend/app/components/session/ExecuteButton.tsx`
+- [x] T057 [P] [US2] Create ExecutionLog component in `frontend/app/components/session/ExecutionLog.tsx`
+- [x] T058 [P] [US2] Create ExecutionLogEntry component in `frontend/app/components/session/ExecutionLogEntry.tsx`
+- [x] T059 [P] [US2] Create ToolCallDisplay component in `frontend/app/components/session/ToolCallDisplay.tsx`
+- [x] T060 [US2] Add execution SSE handler to Session page in `frontend/app/pages/SessionPage.tsx`
+- [x] T061 [US2] Update TaskItem with in_progress/done/failed states in `frontend/app/components/session/TaskItem.tsx`
 
 **Checkpoint**: US2 complete - Users can execute tasks and see real-time streaming updates
 

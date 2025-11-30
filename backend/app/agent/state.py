@@ -30,7 +30,7 @@ class PlanningState(TypedDict):
 
 
 class ExecutionState(TypedDict):
-    """State for the execution agent (will be used in Phase 4).
+    """State for the execution agent.
 
     Attributes:
         messages: Conversation messages with LangGraph's message reducer
@@ -39,6 +39,8 @@ class ExecutionState(TypedDict):
         tasks: List of all tasks in the session
         artifacts: Generated artifacts during execution
         data_items: Collected data items during execution
+        task_result: Result summary from task execution
+        task_reflection: Agent's reflection on task completion
         is_complete: Whether execution is complete
     """
 
@@ -48,4 +50,6 @@ class ExecutionState(TypedDict):
     tasks: list[dict[str, str | None]]
     artifacts: list[dict[str, str | None]]
     data_items: list[dict[str, str | None]]
+    task_result: str | None
+    task_reflection: str | None
     is_complete: bool
