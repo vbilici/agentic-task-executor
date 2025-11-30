@@ -1,6 +1,7 @@
 import type { KeyboardEvent } from "react";
 import { useState, useRef } from "react";
 import { Send } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -8,12 +9,14 @@ interface ChatInputProps {
   onSend: (message: string) => void;
   disabled?: boolean;
   placeholder?: string;
+  className?: string;
 }
 
 export function ChatInput({
   onSend,
   disabled = false,
   placeholder = "Describe your goal...",
+  className,
 }: ChatInputProps) {
   const [message, setMessage] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -34,7 +37,7 @@ export function ChatInput({
   };
 
   return (
-    <div className="flex gap-2 p-4 border-t border-border bg-background">
+    <div className={cn("flex gap-2 p-4 border-t border-border bg-background", className)}>
       <Input
         ref={inputRef}
         value={message}

@@ -1,7 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { ExecutionEvent, MessageRole } from "@/types/api";
 import { ChatMessage } from "./ChatMessage";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 // Message item that can include execution events
 export interface ChatMessageItem {
@@ -26,25 +25,23 @@ export function ChatMessageList({
   }, [messages, streamingContent]);
 
   return (
-    <ScrollArea className="flex-1">
-      <div>
-        {messages.map((message, index) => (
-          <ChatMessage
-            key={index}
-            messageRole={message.role}
-            content={message.content}
-            executionEvent={message.executionEvent}
-          />
-        ))}
-        {streamingContent && (
-          <ChatMessage
-            messageRole="assistant"
-            content={streamingContent}
-            isStreaming
-          />
-        )}
-      </div>
+    <div className="pb-8">
+      {messages.map((message, index) => (
+        <ChatMessage
+          key={index}
+          messageRole={message.role}
+          content={message.content}
+          executionEvent={message.executionEvent}
+        />
+      ))}
+      {streamingContent && (
+        <ChatMessage
+          messageRole="assistant"
+          content={streamingContent}
+          isStreaming
+        />
+      )}
       <div ref={bottomRef} />
-    </ScrollArea>
+    </div>
   );
 }

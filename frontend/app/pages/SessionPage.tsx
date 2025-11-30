@@ -276,24 +276,40 @@ export function SessionPage() {
           </div>
         </header>
 
-        {/* Messages */}
-        <ChatMessageList
-          messages={messages}
-          streamingContent={streamingContent}
-        />
+        {/* Pristine mode: center the input when no messages */}
+        {messages.length === 0 && !streamingContent ? (
+          <div className="flex-1 flex items-center justify-center p-4">
+            <ChatInput
+              onSend={handleSendMessage}
+              disabled={isSending || isExecuting}
+              placeholder="Describe your goal..."
+              className="w-full max-w-2xl border-t-0 rounded-lg border border-border"
+            />
+          </div>
+        ) : (
+          <div className="flex-1 relative min-h-0">
+            {/* Messages - scrollable area with padding for fixed input */}
+            <div className="absolute inset-0 overflow-y-auto pb-16">
+              <ChatMessageList
+                messages={messages}
+                streamingContent={streamingContent}
+              />
+            </div>
 
-        {/* Input */}
-        <ChatInput
-          onSend={handleSendMessage}
-          disabled={isSending || isExecuting}
-          placeholder={
-            isExecuting
-              ? "Execution in progress..."
-              : messages.length === 0
-                ? "Describe your goal..."
-                : "Ask a follow-up question..."
-          }
-        />
+            {/* Input - fixed at bottom */}
+            <div className="absolute bottom-0 left-0 right-0">
+              <ChatInput
+                onSend={handleSendMessage}
+                disabled={isSending || isExecuting}
+                placeholder={
+                  isExecuting
+                    ? "Execution in progress..."
+                    : "Ask a follow-up question..."
+                }
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Right Sidebar - Tasks & Artifacts */}
