@@ -45,7 +45,7 @@ def create_app() -> FastAPI:
         allow_origins=[
             "http://localhost:5173",
             "http://localhost:3000",
-            "https://agentic-task-executor-frontend-987189124661.europe-west3.run.app",
+            "https://agentic-task-executor-frontend-qzcufu26pq-ey.a.run.app",
         ],
         allow_credentials=True,
         allow_methods=["*"],

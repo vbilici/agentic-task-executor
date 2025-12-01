@@ -4,7 +4,7 @@ steps:
       - build
       - '--no-cache'
       - '--build-arg'
-      - 'VITE_API_URL=https://agentic-task-executor-backend-987189124661.europe-west3.run.app'
+      - 'VITE_API_URL=https://agentic-task-executor-backend-qzcufu26pq-ey.a.run.app'
       - '-t'
       - >-
         $_AR_HOSTNAME/$_AR_PROJECT_ID/$_AR_REPOSITORY/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA
