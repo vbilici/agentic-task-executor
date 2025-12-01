@@ -67,7 +67,7 @@ Remember: You're helping the user plan. Focus on understanding their needs."""
 TASK_EXTRACTION_PROMPT = """Based on the conversation, extract actionable tasks for the user's goal.
 
 Rules:
-- Create 3-10 concrete, actionable tasks
+- Create 3-5 concrete, actionable tasks
 - Start each task with an action verb (Research, Create, Contact, Write, etc.)
 - Keep task titles concise but descriptive (max 100 characters)
 - Order tasks logically (dependencies first)
