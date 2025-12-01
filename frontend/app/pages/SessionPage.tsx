@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { api } from "@/services/api";
 import { useSSE } from "@/hooks/useSSE";
 import { useMobileNavContext } from "@/contexts/MobileNavContext";
+import { useSessionContext } from "@/contexts/SessionContext";
 import type {
   Task,
   ChatEvent,
@@ -41,6 +42,7 @@ export function SessionPage() {
     setIsExtractingTasks: setMobileIsExtractingTasks,
     setSessionTitle,
   } = useMobileNavContext();
+  const { updateSession } = useSessionContext();
 
   // Session state
   const [session, setSession] = useState<SessionDetail | null>(null);
@@ -83,13 +85,43 @@ export function SessionPage() {
 
   useEffect(() => {
     setSessionTitle(session?.title || "New Session");
-  }, [session?.title, setSessionTitle]);
+    // Also sync to SessionContext for sidebar
+    if (session?.id && session?.title) {
+      updateSession(session.id, { title: session.title });
+    }
+  }, [session?.id, session?.title, setSessionTitle, updateSession]);
 
   // Reference to tasks for execution event handler
   const tasksRef = useRef<Task[]>([]);
   useEffect(() => {
     tasksRef.current = tasks;
   }, [tasks]);
+
+  // Ref to sessionId for use in SSE handlers
+  const sessionIdRef = useRef<string | undefined>(sessionId);
+  useEffect(() => {
+    sessionIdRef.current = sessionId;
+  }, [sessionId]);
+
+  // Function to refresh session title after chat completes
+  const refreshSessionTitle = useCallback(async () => {
+    const currentSessionId = sessionIdRef.current;
+    if (!currentSessionId) return;
+    try {
+      const sessionData = await api.getSession(currentSessionId);
+      setSession((prev) =>
+        prev ? { ...prev, title: sessionData.title } : prev
+      );
+    } catch (error) {
+      console.error("Failed to refresh session title:", error);
+    }
+  }, []);
+
+  // Ref for refreshSessionTitle to use in SSE handlers
+  const refreshSessionTitleRef = useRef(refreshSessionTitle);
+  useEffect(() => {
+    refreshSessionTitleRef.current = refreshSessionTitle;
+  }, [refreshSessionTitle]);
 
   // Helper to convert ExecutionLog to ChatMessageItem
   const convertExecutionLogToMessage = useCallback(
@@ -143,6 +175,8 @@ export function SessionPage() {
           setStreamingContent("");
           setIsSending(false);
           setIsExtractingTasks(false);
+          // Refresh session title (may have been updated on first message)
+          refreshSessionTitleRef.current();
           break;
         }
         case "error":

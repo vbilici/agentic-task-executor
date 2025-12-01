@@ -8,6 +8,7 @@ import { MobileHeader } from "./MobileHeader";
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
@@ -17,7 +18,7 @@ export function AppLayout() {
   const { activePanel, closePanel, isMobile } = useMobileNavContext();
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-screen overflow-hidden">
       {/* Mobile Header - Only visible on mobile */}
       {isMobile && <MobileHeader />}
 
@@ -26,9 +27,12 @@ export function AppLayout() {
         open={activePanel === "sessions"}
         onOpenChange={(open) => !open && closePanel()}
       >
-        <SheetContent side="left" className="w-[280px] p-0">
+        <SheetContent side="left" className="w-[280px] p-0 flex flex-col">
           <SheetHeader className="p-4 border-b border-border">
             <SheetTitle>Sessions</SheetTitle>
+            <SheetDescription className="sr-only">
+              Browse and manage your sessions
+            </SheetDescription>
           </SheetHeader>
           <SessionListContent onSessionSelect={closePanel} />
         </SheetContent>
@@ -37,7 +41,7 @@ export function AppLayout() {
       {/* Desktop Left Sidebar - Hidden on mobile */}
       <aside
         className={cn(
-          "hidden sm:flex h-screen sticky top-0 border-r border-border bg-card transition-all duration-200 flex-col",
+          "hidden sm:flex h-full max-h-full overflow-hidden border-r border-border bg-card transition-all duration-200 flex-col",
           isLeftCollapsed ? "w-14" : "w-64"
         )}
       >
@@ -71,7 +75,7 @@ export function AppLayout() {
       {/* Main Content */}
       <main
         className={cn(
-          "flex-1 min-w-0 overflow-hidden",
+          "flex-1 min-w-0 h-full overflow-hidden",
           isMobile && "pt-14" // Account for fixed mobile header
         )}
       >

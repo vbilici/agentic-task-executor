@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ListTodo, FileText, Loader2 } from "lucide-react";
+import { ListTodo, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Task, ArtifactSummary } from "@/types/api";
 import { TasksPanelContent } from "./TasksPanelContent";
@@ -61,10 +61,10 @@ export function RightSidebar({
 
   return (
     // Hidden on mobile (sm:flex), visible on desktop
-    <div className="hidden sm:flex h-screen sticky top-0 border-l border-border">
+    <div className="hidden sm:flex h-full border-l border-border">
       {/* Content Panel */}
       {activeTab && (
-        <div className="w-72 flex flex-col bg-card">
+        <div className="w-72 h-full flex flex-col bg-card">
           {activeTab === "tasks" ? (
             <TasksPanelContent
               tasks={tasks}
@@ -98,11 +98,7 @@ export function RightSidebar({
             )}
             aria-label="Toggle tasks panel"
           >
-            {isExtractingTasks ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <ListTodo className="h-5 w-5" />
-            )}
+            <ListTodo className="h-5 w-5" />
             <Badge
               variant={activeTab === "tasks" ? "default" : "secondary"}
               className="text-xs px-1.5"

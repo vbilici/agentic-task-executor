@@ -97,7 +97,7 @@ export function ChatMessageList({
         />
       )}
       {isExtractingTasks && (
-        <div className="px-6 py-4">
+        <div className="px-6 py-4 md:hidden">
           <div className="flex items-center gap-3 bg-primary/10 border border-primary/20 rounded-lg px-4 py-3">
             <Loader2 className="h-5 w-5 animate-spin text-primary" />
             <span className="font-medium text-primary">Generating Tasks...</span>

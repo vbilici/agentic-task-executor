@@ -17,6 +17,7 @@ interface SessionContextValue {
   refreshSessions: () => Promise<void>;
   createSession: () => Promise<Session | null>;
   deleteSession: (id: string) => Promise<void>;
+  updateSession: (id: string, updates: Partial<Session>) => void;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -62,6 +63,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const updateSession = useCallback((id: string, updates: Partial<Session>) => {
+    setSessions((prev) =>
+      prev.map((session) =>
+        session.id === id ? { ...session, ...updates } : session
+      )
+    );
+  }, []);
+
   // Load sessions on mount
   useEffect(() => {
     refreshSessions();
@@ -76,6 +85,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         refreshSessions,
         createSession,
         deleteSession,
+        updateSession,
       }}
     >
       {children}

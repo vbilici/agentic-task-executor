@@ -40,7 +40,7 @@ export function SessionListContent({
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col flex-1 min-h-0">
       {/* New Session Button */}
       <div className="p-2">
         <Button
@@ -62,7 +62,7 @@ export function SessionListContent({
       </div>
 
       {/* Session List */}
-      <div className="flex-1 overflow-y-auto p-2">
+      <div className="flex-1 min-h-0 overflow-y-auto p-2">
         <TooltipProvider delayDuration={300}>
           {isLoading ? (
             <div className="flex justify-center py-4">
