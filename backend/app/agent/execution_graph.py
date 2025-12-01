@@ -564,12 +564,13 @@ Provide a thoughtful reflection that synthesizes all task results:
 - **Any issues**: Problems encountered (if any)
 - Keep it scannable: 3-8 bullet points max
 
-### For Artifact (detailed_summary)
-Create a comprehensive markdown document with:
+### For "Final Summary" Artifact (detailed_summary)
+This will be saved as a "Final Summary" artifact. Create a comprehensive markdown document with:
 - Executive summary
 - Detailed findings per task
 - Key data points discovered
 - Recommendations and next steps
+- Useful links for further action (include relevant URLs discovered during tasks)
 
 Be specific - reference actual data from tasks. Don't just repeat results - synthesize and add value."""
 
@@ -581,7 +582,6 @@ class ExecutionSummary(BaseModel):
     detailed_summary: str = Field(
         description="Full markdown summary document for artifact"
     )
-    artifact_name: str = Field(description="Descriptive name for the summary artifact")
 
 
 async def create_execution_summary(
@@ -642,7 +642,7 @@ async def create_execution_summary(
         artifact_data = ArtifactCreate(
             session_id=session_id,
             task_id=None,  # Session-level artifact, not tied to a task
-            name=result.artifact_name,
+            name="Final Summary",
             type=ArtifactType.SUMMARY,
             content=result.detailed_summary,
         )
