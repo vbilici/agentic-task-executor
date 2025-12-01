@@ -172,7 +172,7 @@ def create_execution_graph() -> StateGraph:
     # Create tool node
     tool_node = ToolNode(ALL_TOOLS)
 
-    def agent_node(state: ExecutionState) -> dict[str, Any]:
+    async def agent_node(state: ExecutionState) -> dict[str, Any]:
         """Main agent node that decides what to do next."""
         messages = list(state["messages"])
 
@@ -203,11 +203,11 @@ def create_execution_graph() -> StateGraph:
             messages = [system_msg, *messages]
 
         # Get response from LLM
-        response = llm_with_tools.invoke(messages)
+        response = await llm_with_tools.ainvoke(messages)
 
         return {"messages": [response]}
 
-    def artifact_creator_node(state: ExecutionState) -> dict[str, Any]:
+    async def artifact_creator_node(state: ExecutionState) -> dict[str, Any]:
         """Generate task result and decide whether to create an artifact."""
         # Get current task info
         current_task = None
@@ -233,7 +233,7 @@ def create_execution_graph() -> StateGraph:
         ]
 
         # Get structured task result
-        task_result_obj: TaskResult = reflection_llm.invoke(result_messages)
+        task_result_obj: TaskResult = await reflection_llm.ainvoke(result_messages)
         task_result = task_result_obj.result
 
         # Skip artifact creation if no meaningful result
@@ -248,31 +248,9 @@ def create_execution_graph() -> StateGraph:
         # This prevents duplicate artifacts when the agent proactively creates one
         if state["current_task_id"]:
             try:
-                import asyncio
-
-                try:
-                    loop = asyncio.get_event_loop()
-                    if loop.is_running():
-                        import concurrent.futures
-
-                        with concurrent.futures.ThreadPoolExecutor() as executor:
-                            future = executor.submit(
-                                asyncio.run,
-                                artifact_service.list_by_task(
-                                    UUID(state["current_task_id"])
-                                ),
-                            )
-                            existing_artifacts = future.result()
-                    else:
-                        existing_artifacts = loop.run_until_complete(
-                            artifact_service.list_by_task(
-                                UUID(state["current_task_id"])
-                            )
-                        )
-                except RuntimeError:
-                    existing_artifacts = asyncio.run(
-                        artifact_service.list_by_task(UUID(state["current_task_id"]))
-                    )
+                existing_artifacts = await artifact_service.list_by_task(
+                    UUID(state["current_task_id"])
+                )
 
                 if existing_artifacts:
                     # Artifact already exists for this task, skip creation
@@ -307,7 +285,7 @@ def create_execution_graph() -> StateGraph:
         ]
 
         # Get structured decision
-        decision: ArtifactDecision = artifact_llm.invoke(artifact_messages)
+        decision: ArtifactDecision = await artifact_llm.ainvoke(artifact_messages)
 
         # If should create, call artifact service directly
         if decision.should_create and decision.name and decision.content:
@@ -321,26 +299,7 @@ def create_execution_graph() -> StateGraph:
                     type=ArtifactType(decision.artifact_type or "note"),
                     content=decision.content,
                 )
-                # Note: This is sync, but we're in a sync node context
-                # The artifact will be created and we'll store info for event emission
-                import asyncio
-
-                try:
-                    loop = asyncio.get_event_loop()
-                    if loop.is_running():
-                        import concurrent.futures
-
-                        with concurrent.futures.ThreadPoolExecutor() as executor:
-                            future = executor.submit(
-                                asyncio.run, artifact_service.create(artifact_data)
-                            )
-                            artifact = future.result()
-                    else:
-                        artifact = loop.run_until_complete(
-                            artifact_service.create(artifact_data)
-                        )
-                except RuntimeError:
-                    artifact = asyncio.run(artifact_service.create(artifact_data))
+                artifact = await artifact_service.create(artifact_data)
 
                 return {
                     "task_result": task_result,

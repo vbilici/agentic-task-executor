@@ -8,9 +8,6 @@ Tests the datetime utility tools including:
 - get_day_of_week for day name lookup
 """
 
-import pytest
-from datetime import datetime
-from unittest.mock import patch
 
 
 class TestGetCurrentDatetime:

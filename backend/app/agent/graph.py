@@ -166,7 +166,7 @@ def create_planning_graph() -> StateGraph:
         streaming=False,
     ).with_structured_output(TaskList)
 
-    def should_extract_node(state: PlanningState) -> dict[str, object]:
+    async def should_extract_node(state: PlanningState) -> dict[str, object]:
         """Evaluate conversation and extract tasks if ready.
 
         This node runs FIRST to determine if we have enough context.
@@ -190,7 +190,7 @@ def create_planning_graph() -> StateGraph:
         # Run task extraction
         system_msg = SystemMessage(content=TASK_EXTRACTION_PROMPT)
         messages_with_system = [system_msg, *messages]
-        result: TaskList = task_llm.invoke(messages_with_system)
+        result: TaskList = await task_llm.ainvoke(messages_with_system)
 
         tasks = []
         if result.ready_to_create_tasks and result.tasks:
@@ -203,7 +203,7 @@ def create_planning_graph() -> StateGraph:
             "ready_to_create_tasks": result.ready_to_create_tasks,
         }
 
-    def chat_with_tasks_node(state: PlanningState) -> dict[str, object]:
+    async def chat_with_tasks_node(state: PlanningState) -> dict[str, object]:
         """Generate response that acknowledges the generated tasks."""
         messages = list(state["messages"])
         tasks = state.get("tasks", [])
@@ -221,13 +221,13 @@ def create_planning_graph() -> StateGraph:
         system_msg = SystemMessage(content=prompt)
         messages_with_system = [system_msg, *messages]
 
-        response = chat_llm.invoke(messages_with_system)
+        response = await chat_llm.ainvoke(messages_with_system)
         return {
             "messages": [response],
             "is_complete": True,
         }
 
-    def chat_only_node(state: PlanningState) -> dict[str, object]:
+    async def chat_only_node(state: PlanningState) -> dict[str, object]:
         """Generate normal conversational response (no tasks)."""
         messages = list(state["messages"])
 
@@ -243,7 +243,7 @@ def create_planning_graph() -> StateGraph:
         system_msg = SystemMessage(content=prompt)
         messages_with_system = [system_msg, *messages]
 
-        response = chat_llm.invoke(messages_with_system)
+        response = await chat_llm.ainvoke(messages_with_system)
         return {
             "messages": [response],
         }

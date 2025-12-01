@@ -1,11 +1,11 @@
 """Tests for TaskService state machine transitions."""
 
-import pytest
 from unittest.mock import MagicMock, patch
 from uuid import UUID
 
+import pytest
+
 from app.models.base import TaskStatus
-from app.models.task import Task
 from app.services.task_service import TaskService
 
 
@@ -114,20 +114,23 @@ class TestTaskServiceErrors:
             yield service
 
     @pytest.mark.asyncio
-    async def test_start_already_in_progress_raises(
+    async def test_start_already_in_progress_returns_task(
         self, task_service, mock_supabase, mock_task_in_progress
     ):
-        """Invalid: in_progress -> in_progress should raise ValueError.
+        """Valid: in_progress -> in_progress returns task as-is (for resume).
 
         Verifies that attempting to start a task that is already
-        in progress raises a ValueError with appropriate message.
+        in progress returns the task without modification, supporting
+        the resume flow for paused sessions.
         """
         task_id = UUID(mock_task_in_progress["id"])
 
         mock_supabase.execute.return_value = MagicMock(data=[mock_task_in_progress])
 
-        with pytest.raises(ValueError, match="expected 'pending'"):
-            await task_service.start_task(task_id)
+        # Should not raise - allows resuming from in_progress
+        result = await task_service.start_task(task_id)
+        assert result.id == task_id
+        assert result.status.value == "in_progress"
 
     @pytest.mark.asyncio
     async def test_complete_from_pending_raises(

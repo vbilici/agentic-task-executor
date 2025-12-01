@@ -1,6 +1,5 @@
 """Create artifact tool for the execution agent."""
 
-import asyncio
 from typing import Literal
 from uuid import UUID
 
@@ -11,24 +10,8 @@ from app.models.base import ArtifactType
 from app.services.artifact_service import artifact_service
 
 
-def _run_async(coro):
-    """Run async code from sync context."""
-    try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            # We're in an async context but called from sync
-            import concurrent.futures
-
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                future = executor.submit(asyncio.run, coro)
-                return future.result()
-        return loop.run_until_complete(coro)
-    except RuntimeError:
-        return asyncio.run(coro)
-
-
 @tool
-def create_artifact(
+async def create_artifact(
     session_id: str,
     name: str,
     content: str,
@@ -83,7 +66,7 @@ def create_artifact(
             content=content,
         )
 
-        artifact = _run_async(artifact_service.create(artifact_data))
+        artifact = await artifact_service.create(artifact_data)
 
         return f"Successfully created {artifact_type} artifact '{name}' (ID: {artifact.id})"
 

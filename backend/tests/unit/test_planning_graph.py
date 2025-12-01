@@ -1,7 +1,6 @@
 """Tests for planning graph nodes (T024-T029)."""
 
-import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
@@ -14,7 +13,7 @@ class TestChatNode:
     the 'chat_only' node behavior.
     """
 
-    def test_chat_only_node_returns_ai_message(self):
+    async def test_chat_only_node_returns_ai_message(self):
         """Chat only node returns AIMessage response (T025)."""
         from app.agent.graph import CHAT_PROMPT
 
@@ -26,7 +25,7 @@ class TestChatNode:
             with patch("app.agent.graph.ChatOpenAI") as mock_llm_class:
                 # Create mock LLM instance
                 mock_llm = MagicMock()
-                mock_llm.invoke.return_value = mock_response
+                mock_llm.ainvoke = AsyncMock(return_value=mock_response)
                 mock_llm_class.return_value = mock_llm
 
                 # Import after patching
@@ -45,7 +44,7 @@ class TestChatNode:
                     "is_complete": False,
                 }
 
-                result = chat_node.invoke(state)
+                result = await chat_node.ainvoke(state)
 
                 # Verify result structure
                 assert "messages" in result
@@ -54,13 +53,13 @@ class TestChatNode:
                 assert result["messages"][0].content == "I'll help you plan that."
 
                 # Verify LLM was called with system prompt
-                mock_llm.invoke.assert_called_once()
-                call_args = mock_llm.invoke.call_args[0][0]
+                mock_llm.ainvoke.assert_called_once()
+                call_args = mock_llm.ainvoke.call_args[0][0]
                 # First message should be system message with CHAT_PROMPT
                 assert isinstance(call_args[0], SystemMessage)
                 assert CHAT_PROMPT in call_args[0].content
 
-    def test_chat_only_node_uses_execution_summary_prompt(self):
+    async def test_chat_only_node_uses_execution_summary_prompt(self):
         """Chat only node uses summary prompt when [EXECUTION COMPLETE] in message (T026)."""
         from app.agent.graph import EXECUTION_SUMMARY_PROMPT
 
@@ -71,7 +70,7 @@ class TestChatNode:
 
             with patch("app.agent.graph.ChatOpenAI") as mock_llm_class:
                 mock_llm = MagicMock()
-                mock_llm.invoke.return_value = mock_response
+                mock_llm.ainvoke = AsyncMock(return_value=mock_response)
                 mock_llm_class.return_value = mock_llm
 
                 from app.agent.graph import create_planning_graph
@@ -89,10 +88,10 @@ class TestChatNode:
                     "is_complete": False,
                 }
 
-                result = chat_node.invoke(state)
+                await chat_node.ainvoke(state)
 
                 # Verify execution summary prompt was used
-                call_args = mock_llm.invoke.call_args[0][0]
+                call_args = mock_llm.ainvoke.call_args[0][0]
                 system_msg = call_args[0]
                 assert isinstance(system_msg, SystemMessage)
                 assert EXECUTION_SUMMARY_PROMPT in system_msg.content
@@ -106,7 +105,7 @@ class TestTaskExtractionNode:
     now verify the 'should_extract' node behavior.
     """
 
-    def test_should_extract_returns_tasks_when_ready(self):
+    async def test_should_extract_returns_tasks_when_ready(self):
         """Should extract returns task list when ready_to_create_tasks is True (T028)."""
         from app.agent.graph import TaskItem, TaskList
 
@@ -125,7 +124,7 @@ class TestTaskExtractionNode:
                 # Mock both chat LLM and task LLM
                 mock_chat_llm = MagicMock()
                 mock_task_llm = MagicMock()
-                mock_task_llm.invoke.return_value = mock_task_list
+                mock_task_llm.ainvoke = AsyncMock(return_value=mock_task_list)
                 mock_chat_llm.with_structured_output.return_value = mock_task_llm
 
                 # The graph creates two ChatOpenAI instances
@@ -144,7 +143,7 @@ class TestTaskExtractionNode:
                     "is_complete": False,
                 }
 
-                result = extract_node.invoke(state)
+                result = await extract_node.ainvoke(state)
 
                 # Verify tasks were extracted
                 assert "tasks" in result
@@ -156,7 +155,7 @@ class TestTaskExtractionNode:
                 # Note: should_extract sets ready_to_create_tasks, not is_complete
                 assert result.get("ready_to_create_tasks", True) is True
 
-    def test_should_extract_returns_empty_when_not_ready(self):
+    async def test_should_extract_returns_empty_when_not_ready(self):
         """Should extract returns empty list when goal is unclear (T029)."""
         from app.agent.graph import TaskList
 
@@ -171,7 +170,7 @@ class TestTaskExtractionNode:
             with patch("app.agent.graph.ChatOpenAI") as mock_llm_class:
                 mock_chat_llm = MagicMock()
                 mock_task_llm = MagicMock()
-                mock_task_llm.invoke.return_value = mock_task_list
+                mock_task_llm.ainvoke = AsyncMock(return_value=mock_task_list)
                 mock_chat_llm.with_structured_output.return_value = mock_task_llm
                 mock_llm_class.return_value = mock_chat_llm
 
@@ -188,7 +187,7 @@ class TestTaskExtractionNode:
                     "is_complete": False,
                 }
 
-                result = extract_node.invoke(state)
+                result = await extract_node.ainvoke(state)
 
                 assert result["tasks"] == []
                 assert result.get("ready_to_create_tasks", False) is False

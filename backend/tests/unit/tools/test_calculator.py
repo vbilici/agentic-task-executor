@@ -154,8 +154,8 @@ class TestCalculatorFunctions:
 
     def test_trigonometric_functions(self):
         """Trigonometric functions work correctly."""
+
         from app.agent.tools.calculator import calculator
-        import math
 
         # sin(0) = 0
         result = calculator.invoke({"expression": "sin(0)"})
@@ -183,8 +183,9 @@ class TestCalculatorFunctions:
 
     def test_exp(self):
         """Exponential function works correctly."""
-        from app.agent.tools.calculator import calculator
         import math
+
+        from app.agent.tools.calculator import calculator
 
         result = calculator.invoke({"expression": "exp(1)"})
         assert abs(float(result) - math.e) < 0.0001
@@ -195,16 +196,18 @@ class TestCalculatorConstants:
 
     def test_pi_constant(self):
         """Pi constant is available."""
-        from app.agent.tools.calculator import calculator
         import math
+
+        from app.agent.tools.calculator import calculator
 
         result = calculator.invoke({"expression": "pi"})
         assert abs(float(result) - math.pi) < 0.0001
 
     def test_e_constant(self):
         """Euler's number e is available."""
-        from app.agent.tools.calculator import calculator
         import math
+
+        from app.agent.tools.calculator import calculator
 
         result = calculator.invoke({"expression": "e"})
         assert abs(float(result) - math.e) < 0.0001

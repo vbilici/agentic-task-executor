@@ -6,10 +6,10 @@ Tests the execution agent graph including:
 - artifact_creator_node decision making
 """
 
-import pytest
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+import pytest
+from langchain_core.messages import AIMessage, HumanMessage
 
 
 class TestShouldContinue:
@@ -145,14 +145,18 @@ class TestArtifactCreatorReflection:
     deciding on artifact creation.
     """
 
-    def test_artifact_creator_extracts_task_result(self):
+    async def test_artifact_creator_extracts_task_result(self):
         """Artifact creator extracts TaskResult from conversation (T034).
 
         The artifact_creator_node should use structured output to extract
         a result summary from the conversation history before deciding
         on artifact creation.
         """
-        from app.agent.execution_graph import TaskResult, ArtifactDecision, create_execution_graph
+        from app.agent.execution_graph import (
+            ArtifactDecision,
+            TaskResult,
+            create_execution_graph,
+        )
         from app.agent.state import ExecutionState
 
         mock_task_result = TaskResult(
@@ -174,13 +178,13 @@ class TestArtifactCreatorReflection:
                 # Create mock LLM that returns different things for different structured outputs
                 mock_llm = MagicMock()
 
-                # First call: reflection LLM (TaskResult)
+                # First call: reflection LLM (TaskResult) - use AsyncMock for ainvoke
                 mock_reflection_llm = MagicMock()
-                mock_reflection_llm.invoke.return_value = mock_task_result
+                mock_reflection_llm.ainvoke = AsyncMock(return_value=mock_task_result)
 
-                # Second call: artifact LLM (ArtifactDecision)
+                # Second call: artifact LLM (ArtifactDecision) - use AsyncMock for ainvoke
                 mock_artifact_llm = MagicMock()
-                mock_artifact_llm.invoke.return_value = mock_artifact_decision
+                mock_artifact_llm.ainvoke = AsyncMock(return_value=mock_artifact_decision)
 
                 # with_structured_output returns different mocks based on call order
                 mock_llm.with_structured_output.side_effect = [mock_reflection_llm, mock_artifact_llm]
@@ -206,19 +210,23 @@ class TestArtifactCreatorReflection:
                     "is_complete": False,
                 }
 
-                # RunnableCallable uses .invoke() method
-                result = artifact_node_runnable.invoke(state)
+                # RunnableCallable uses .ainvoke() for async nodes
+                result = await artifact_node_runnable.ainvoke(state)
 
                 assert result["task_result"] == "Found 5 matching restaurants in the area"
                 assert result["is_complete"] is True
 
-    def test_artifact_creator_handles_missing_task(self):
+    async def test_artifact_creator_handles_missing_task(self):
         """Artifact creator handles case when task is not found.
 
         Edge case: If current_task_id doesn't match any task,
         should still produce a result with 'Unknown task' context.
         """
-        from app.agent.execution_graph import TaskResult, ArtifactDecision, create_execution_graph
+        from app.agent.execution_graph import (
+            ArtifactDecision,
+            TaskResult,
+            create_execution_graph,
+        )
         from app.agent.state import ExecutionState
 
         mock_task_result = TaskResult(
@@ -239,9 +247,9 @@ class TestArtifactCreatorReflection:
             with patch("app.agent.execution_graph.ChatOpenAI") as mock_llm_class:
                 mock_llm = MagicMock()
                 mock_reflection_llm = MagicMock()
-                mock_reflection_llm.invoke.return_value = mock_task_result
+                mock_reflection_llm.ainvoke = AsyncMock(return_value=mock_task_result)
                 mock_artifact_llm = MagicMock()
-                mock_artifact_llm.invoke.return_value = mock_artifact_decision
+                mock_artifact_llm.ainvoke = AsyncMock(return_value=mock_artifact_decision)
                 mock_llm.with_structured_output.side_effect = [mock_reflection_llm, mock_artifact_llm]
                 mock_llm_class.return_value = mock_llm
 
@@ -262,8 +270,8 @@ class TestArtifactCreatorReflection:
                     "is_complete": False,
                 }
 
-                # RunnableCallable uses .invoke() method
-                result = artifact_node_runnable.invoke(state)
+                # RunnableCallable uses .ainvoke() for async nodes
+                result = await artifact_node_runnable.ainvoke(state)
 
                 # Should still complete
                 assert result["is_complete"] is True
@@ -273,49 +281,30 @@ class TestArtifactCreatorReflection:
 class TestArtifactCreatorNode:
     """Test artifact creator node decision logic."""
 
-    def test_artifact_creator_skips_empty_result(self):
+    async def test_artifact_creator_skips_empty_result(self):
         """Artifact creator skips when task_result is empty.
 
         If there's no meaningful result, no artifact should be created.
         """
-        from app.agent.execution_graph import create_execution_graph
+        from app.agent.execution_graph import TaskResult, create_execution_graph
         from app.agent.state import ExecutionState
+
+        # Mock a task result that returns empty string
+        mock_task_result = TaskResult(
+            result="",
+            reflection="No meaningful output"
+        )
 
         with patch("app.agent.execution_graph.get_settings") as mock_settings:
             mock_settings.return_value = MagicMock(openai_api_key="test-key")
 
-            with patch("app.agent.execution_graph.ChatOpenAI"):
-                graph_builder = create_execution_graph()
-                # Access the node's runnable via .runnable attribute
-                artifact_node_spec = graph_builder.nodes["artifact_creator"]
-                artifact_node_runnable = artifact_node_spec.runnable
+            with patch("app.agent.execution_graph.ChatOpenAI") as mock_llm_class:
+                mock_llm = MagicMock()
+                mock_reflection_llm = MagicMock()
+                mock_reflection_llm.ainvoke = AsyncMock(return_value=mock_task_result)
+                mock_llm.with_structured_output.return_value = mock_reflection_llm
+                mock_llm_class.return_value = mock_llm
 
-                state: ExecutionState = {
-                    "messages": [],
-                    "session_id": "test-session",
-                    "current_task_id": "test-task",
-                    "tasks": [{"id": "test-task", "title": "Test"}],
-                    "artifacts": [],
-                    "task_result": "",  # Empty result
-                    "task_reflection": None,
-                    "created_artifact": None,
-                    "is_complete": True,
-                }
-
-                # RunnableCallable uses .invoke() method
-                result = artifact_node_runnable.invoke(state)
-
-                assert result["created_artifact"] is None
-
-    def test_artifact_creator_skips_none_result(self):
-        """Artifact creator skips when task_result is None."""
-        from app.agent.execution_graph import create_execution_graph
-        from app.agent.state import ExecutionState
-
-        with patch("app.agent.execution_graph.get_settings") as mock_settings:
-            mock_settings.return_value = MagicMock(openai_api_key="test-key")
-
-            with patch("app.agent.execution_graph.ChatOpenAI"):
                 graph_builder = create_execution_graph()
                 # Access the node's runnable via .runnable attribute
                 artifact_node_spec = graph_builder.nodes["artifact_creator"]
@@ -330,11 +319,54 @@ class TestArtifactCreatorNode:
                     "task_result": None,
                     "task_reflection": None,
                     "created_artifact": None,
-                    "is_complete": True,
+                    "is_complete": False,
                 }
 
-                # RunnableCallable uses .invoke() method
-                result = artifact_node_runnable.invoke(state)
+                # RunnableCallable uses .ainvoke() for async nodes
+                result = await artifact_node_runnable.ainvoke(state)
+
+                assert result["created_artifact"] is None
+
+    async def test_artifact_creator_skips_none_result(self):
+        """Artifact creator skips when task_result is None."""
+        from app.agent.execution_graph import TaskResult, create_execution_graph
+        from app.agent.state import ExecutionState
+
+        # Mock a task result that returns None-like empty result
+        mock_task_result = TaskResult(
+            result="   ",  # Whitespace only - should be skipped
+            reflection="No output"
+        )
+
+        with patch("app.agent.execution_graph.get_settings") as mock_settings:
+            mock_settings.return_value = MagicMock(openai_api_key="test-key")
+
+            with patch("app.agent.execution_graph.ChatOpenAI") as mock_llm_class:
+                mock_llm = MagicMock()
+                mock_reflection_llm = MagicMock()
+                mock_reflection_llm.ainvoke = AsyncMock(return_value=mock_task_result)
+                mock_llm.with_structured_output.return_value = mock_reflection_llm
+                mock_llm_class.return_value = mock_llm
+
+                graph_builder = create_execution_graph()
+                # Access the node's runnable via .runnable attribute
+                artifact_node_spec = graph_builder.nodes["artifact_creator"]
+                artifact_node_runnable = artifact_node_spec.runnable
+
+                state: ExecutionState = {
+                    "messages": [],
+                    "session_id": "test-session",
+                    "current_task_id": "test-task",
+                    "tasks": [{"id": "test-task", "title": "Test"}],
+                    "artifacts": [],
+                    "task_result": None,
+                    "task_reflection": None,
+                    "created_artifact": None,
+                    "is_complete": False,
+                }
+
+                # RunnableCallable uses .ainvoke() for async nodes
+                result = await artifact_node_runnable.ainvoke(state)
 
                 assert result["created_artifact"] is None
 
@@ -356,8 +388,9 @@ class TestTaskResultModel:
 
     def test_task_result_model_requires_both_fields(self):
         """TaskResult model requires both result and reflection."""
-        from app.agent.execution_graph import TaskResult
         from pydantic import ValidationError
+
+        from app.agent.execution_graph import TaskResult
 
         with pytest.raises(ValidationError):
             TaskResult(result="Only result")  # Missing reflection
