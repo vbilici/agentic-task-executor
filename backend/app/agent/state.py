@@ -14,6 +14,7 @@ class PlanningState(TypedDict):
         session_id: UUID of the current session
         tasks: Generated tasks (list of dicts with title, description)
         is_complete: Whether planning is complete
+        ready_to_create_tasks: Whether extraction decided to create tasks
     """
 
     # Conversation messages with LangGraph's message reducer
@@ -27,6 +28,9 @@ class PlanningState(TypedDict):
 
     # Whether planning is complete
     is_complete: bool
+
+    # Whether extraction decided to create tasks (for routing)
+    ready_to_create_tasks: bool
 
 
 class ExecutionState(TypedDict):

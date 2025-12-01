@@ -92,9 +92,62 @@ Good task example:
 
 If the user's goal is still unclear, set ready_to_create_tasks=false and return an empty task list."""
 
+CHAT_WITH_TASKS_PROMPT = """You are a helpful planning assistant. You have just generated a task list for the user's goal.
+
+## Generated Tasks
+{task_summary}
+
+## Your Role
+Now respond to the user in a friendly, conversational way that:
+1. Briefly acknowledges you've created a plan for them
+2. Summarizes the key approach at a high level (don't just repeat the list - the user can see it)
+3. Ask 1-3 follow-up questions to refine the plan
+
+## Follow-up Questions (ask 1-3 based on what's missing)
+- **For time-sensitive tasks**: ALWAYS ask about specific dates (e.g., "When do you need this completed by?" or "What dates are you planning for?")
+- **For tasks with costs**: Ask about budget constraints
+- **For tasks with options**: Ask about preferences
+- **General refinement**: Ask about priorities, constraints, or additional context
+
+## Example Questions
+- "What specific dates are you looking at for this trip?"
+- "Do you have a budget range in mind?"
+- "Are there any must-haves or deal-breakers I should know about?"
+- "What's your deadline for completing this?"
+- "Would you prefer more detailed tasks or keep them high-level?"
+
+## Guidelines
+- Be conversational, not robotic
+- Don't list the tasks again - the user can see them in the panel
+- Focus on the overall approach
+- Keep your intro concise (1-2 sentences)
+- Format your questions as a bulleted list
+- Questions should help make the tasks more actionable and specific
+
+## Response Format
+[Brief acknowledgment and summary]
+
+[Questions as bullets:]
+- Question 1?
+- Question 2?
+- Question 3? (if needed)
+
+## When to Mention the Execute Button
+- Do NOT mention the Execute button when first presenting tasks - you're still gathering info
+- AFTER the user answers your follow-up questions, mention: "When you're ready, press the Execute button in the tasks panel to start!"
+- Only mention it ONCE - check conversation history, if you've already said it, don't repeat
+
+Remember: The tasks are visible in the sidebar. First ask questions to refine the plan, then once they've answered, let them know they can execute."""
+
 
 def create_planning_graph() -> StateGraph:
-    """Create the planning agent graph with separate chat and task extraction nodes."""
+    """Create the planning agent graph.
+
+    New flow: Extract tasks FIRST, then chat with tasks in context.
+    - should_extract: Runs task extraction to decide if ready
+    - chat_with_tasks: Streams response acknowledging the generated tasks
+    - chat_only: Streams normal clarifying response (no tasks)
+    """
     settings = get_settings()
 
     # Chat LLM (streaming enabled for real-time response)
@@ -113,11 +166,14 @@ def create_planning_graph() -> StateGraph:
         streaming=False,
     ).with_structured_output(TaskList)
 
-    def chat_node(state: PlanningState) -> dict[str, object]:
-        """Generate conversational response (streamed to user)."""
+    def should_extract_node(state: PlanningState) -> dict[str, object]:
+        """Evaluate conversation and extract tasks if ready.
+
+        This node runs FIRST to determine if we have enough context.
+        """
         messages = list(state["messages"])
 
-        # Check if this is an execution summary request
+        # Check if this is an execution summary request - skip extraction
         last_message = messages[-1] if messages else None
         is_execution_summary = (
             last_message
@@ -125,27 +181,15 @@ def create_planning_graph() -> StateGraph:
             and "[EXECUTION COMPLETE]" in str(last_message.content)
         )
 
-        # Use appropriate system prompt
-        prompt = EXECUTION_SUMMARY_PROMPT if is_execution_summary else CHAT_PROMPT
-        system_msg = SystemMessage(content=prompt)
-        messages_with_system = [system_msg, *messages]
+        if is_execution_summary:
+            return {
+                "tasks": [],
+                "ready_to_create_tasks": False,
+            }
 
-        # Get response from LLM (will be streamed via astream_events)
-        response = chat_llm.invoke(messages_with_system)
-
-        return {
-            "messages": [response],
-        }
-
-    def task_extraction_node(state: PlanningState) -> dict[str, object]:
-        """Extract tasks using structured output (not streamed)."""
-        messages = list(state["messages"])
-
-        # Add task extraction prompt
+        # Run task extraction
         system_msg = SystemMessage(content=TASK_EXTRACTION_PROMPT)
         messages_with_system = [system_msg, *messages]
-
-        # Get structured output
         result: TaskList = task_llm.invoke(messages_with_system)
 
         tasks = []
@@ -156,25 +200,86 @@ def create_planning_graph() -> StateGraph:
 
         return {
             "tasks": tasks,
-            "is_complete": bool(tasks),
+            "ready_to_create_tasks": result.ready_to_create_tasks,
         }
 
-    def should_extract_tasks(state: PlanningState) -> Literal["extract", "end"]:
-        """Determine if we should try to extract tasks."""
-        # Always try to extract tasks after chat response
-        return "extract"
+    def chat_with_tasks_node(state: PlanningState) -> dict[str, object]:
+        """Generate response that acknowledges the generated tasks."""
+        messages = list(state["messages"])
+        tasks = state.get("tasks", [])
+
+        # Build task summary for the prompt
+        task_lines = []
+        for t in tasks:
+            line = f"- {t['title']}"
+            if t.get("description"):
+                line += f": {t['description']}"
+            task_lines.append(line)
+        task_summary = "\n".join(task_lines)
+
+        prompt = CHAT_WITH_TASKS_PROMPT.format(task_summary=task_summary)
+        system_msg = SystemMessage(content=prompt)
+        messages_with_system = [system_msg, *messages]
+
+        response = chat_llm.invoke(messages_with_system)
+        return {
+            "messages": [response],
+            "is_complete": True,
+        }
+
+    def chat_only_node(state: PlanningState) -> dict[str, object]:
+        """Generate normal conversational response (no tasks)."""
+        messages = list(state["messages"])
+
+        # Check for execution summary
+        last_message = messages[-1] if messages else None
+        is_execution_summary = (
+            last_message
+            and hasattr(last_message, "content")
+            and "[EXECUTION COMPLETE]" in str(last_message.content)
+        )
+
+        prompt = EXECUTION_SUMMARY_PROMPT if is_execution_summary else CHAT_PROMPT
+        system_msg = SystemMessage(content=prompt)
+        messages_with_system = [system_msg, *messages]
+
+        response = chat_llm.invoke(messages_with_system)
+        return {
+            "messages": [response],
+        }
+
+    def route_after_extraction(
+        state: PlanningState,
+    ) -> Literal["chat_with_tasks", "chat_only"]:
+        """Route based on whether tasks were generated."""
+        if state.get("ready_to_create_tasks", False) and state.get("tasks"):
+            return "chat_with_tasks"
+        return "chat_only"
 
     # Build the graph
     builder: StateGraph = StateGraph(PlanningState)
 
     # Add nodes
-    builder.add_node("chat", chat_node)
-    builder.add_node("extract_tasks", task_extraction_node)
+    builder.add_node("should_extract", should_extract_node)
+    builder.add_node("chat_with_tasks", chat_with_tasks_node)
+    builder.add_node("chat_only", chat_only_node)
 
-    # Add edges: chat -> extract_tasks -> END
-    builder.set_entry_point("chat")
-    builder.add_edge("chat", "extract_tasks")
-    builder.add_edge("extract_tasks", END)
+    # Entry point: always evaluate extraction first
+    builder.set_entry_point("should_extract")
+
+    # Conditional routing after extraction
+    builder.add_conditional_edges(
+        "should_extract",
+        route_after_extraction,
+        {
+            "chat_with_tasks": "chat_with_tasks",
+            "chat_only": "chat_only",
+        },
+    )
+
+    # Both chat nodes end the graph
+    builder.add_edge("chat_with_tasks", END)
+    builder.add_edge("chat_only", END)
 
     return builder
 

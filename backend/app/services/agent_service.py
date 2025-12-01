@@ -104,6 +104,7 @@ class AgentService:
             "session_id": str(session_id),
             "tasks": [],
             "is_complete": False,
+            "ready_to_create_tasks": False,
         }
 
         try:
@@ -111,6 +112,7 @@ class AgentService:
             extracting_started = False
 
             # Stream events from the graph
+            # New flow: should_extract -> [conditional] -> chat_with_tasks OR chat_only
             async for event in graph.astream_events(
                 input_state,
                 config=config,
@@ -120,27 +122,29 @@ class AgentService:
                 # Get the node name from metadata
                 node_name = event.get("metadata", {}).get("langgraph_node", "")
 
-                if event_type == "on_chat_model_stream":
-                    # Only stream content from the "chat" node (not extract_tasks)
-                    if node_name == "chat":
-                        chunk = event.get("data", {}).get("chunk")
-                        if chunk and hasattr(chunk, "content") and chunk.content:
-                            yield {"type": "content", "content": chunk.content}
-
-                elif event_type == "on_chain_stream" and node_name == "chat":
-                    # Chat finished streaming, task extraction is about to start
+                # Emit tasks_extracting when should_extract node starts
+                if event_type == "on_chain_start" and node_name == "should_extract":
                     if not extracting_started:
                         yield {"type": "tasks_extracting"}
                         extracting_started = True
 
-                elif event_type == "on_chain_end" and node_name == "extract_tasks":
-                    # Check for tasks from the extract_tasks node
+                # When should_extract completes, emit tasks if any
+                elif event_type == "on_chain_end" and node_name == "should_extract":
                     output = event.get("data", {}).get("output", {})
                     if isinstance(output, dict):
                         tasks = output.get("tasks", [])
                         if tasks and not tasks_yielded:
                             yield {"type": "tasks_updated", "tasks": tasks}
                             tasks_yielded = True
+
+                # Stream content from either chat node
+                elif event_type == "on_chat_model_stream" and node_name in (
+                    "chat_with_tasks",
+                    "chat_only",
+                ):
+                    chunk = event.get("data", {}).get("chunk")
+                    if chunk and hasattr(chunk, "content") and chunk.content:
+                        yield {"type": "content", "content": chunk.content}
 
             yield {"type": "done"}
 

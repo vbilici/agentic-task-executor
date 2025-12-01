@@ -44,41 +44,45 @@ async def chat(session_id: UUID, request: ChatRequest) -> StreamingResponse:
         await session_service.update_title(session_id, title)
 
     async def event_stream():
-        """Generate SSE events from agent."""
-        tasks_generated: list[dict] = []
+        """Generate SSE events from agent.
 
+        Event flow (new):
+        1. tasks_extracting → UI shows "Generating tasks..."
+        2. tasks_updated → Tasks saved to DB, sent with IDs (BEFORE chat response)
+        3. content (streamed) → Chat message acknowledges tasks
+        4. done → Signal completion
+        """
         try:
             async for event in agent_service.chat(session_id, request.message):
                 event_type = event.get("type")
 
-                if event_type == "content":
-                    yield f"event: content\ndata: {json.dumps(event)}\n\n"
-
-                elif event_type == "tasks_extracting":
+                if event_type == "tasks_extracting":
                     yield f"event: tasks_extracting\ndata: {json.dumps(event)}\n\n"
 
                 elif event_type == "tasks_updated":
-                    # Store tasks but don't send yet - wait until saved to DB
-                    tasks_generated = event.get("tasks", [])
-
-                elif event_type == "error":
-                    yield f"event: error\ndata: {json.dumps(event)}\n\n"
-
-                elif event_type == "done":
-                    # Save tasks to database
-                    if tasks_generated:
+                    # Save tasks immediately BEFORE chat response streams
+                    # This ensures tasks appear in the panel before the message
+                    tasks = event.get("tasks", [])
+                    if tasks:
                         # Delete existing tasks first
                         await task_service.delete_by_session(session_id)
 
                         # Create new tasks
                         task_creates = agent_service.tasks_to_create_models(
-                            session_id, tasks_generated
+                            session_id, tasks
                         )
                         created_tasks = await task_service.create_many(task_creates)
 
-                        # Send updated tasks with database IDs
+                        # Send tasks with database IDs
                         yield f"event: tasks_updated\ndata: {json.dumps({'type': 'tasks_updated', 'tasks': [t.model_dump(mode='json') for t in created_tasks]})}\n\n"
 
+                elif event_type == "content":
+                    yield f"event: content\ndata: {json.dumps(event)}\n\n"
+
+                elif event_type == "error":
+                    yield f"event: error\ndata: {json.dumps(event)}\n\n"
+
+                elif event_type == "done":
                     yield f"event: done\ndata: {json.dumps({'type': 'done'})}\n\n"
 
         except Exception as e:
