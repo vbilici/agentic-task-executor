@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api } from "@/services/api";
 import { useSSE } from "@/hooks/useSSE";
@@ -67,8 +67,9 @@ export function SessionPage() {
   // Artifact modal state
   const [selectedArtifactId, setSelectedArtifactId] = useState<string | null>(null);
 
-  // Suggestions for pristine state (computed once on mount)
-  const [suggestions] = useState(() => getRandomSuggestions(4));
+  // Suggestions for pristine state (regenerated when session changes)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- sessionId triggers regeneration intentionally
+  const suggestions = useMemo(() => getRandomSuggestions(4), [sessionId]);
 
   // Sync mobile nav context with task/artifact counts
   useEffect(() => {
