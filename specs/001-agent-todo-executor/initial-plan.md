@@ -345,7 +345,6 @@ Each execution step is streamed via SSE and displayed in the chat/execution pane
 {"event": "task_selected", "data": {"task_index": 2, "title": "Research competitor pricing"}}
 {"event": "tool_call", "data": {"tool": "web_search", "input": "competitor pricing SaaS 2024"}}
 {"event": "task_completed", "data": {"task_index": 2, "status": "done", "result": "Found 5 relevant sources"}}
-{"event": "reflection", "data": {"task_index": 2, "content": "Pricing data collected, moving to analysis task"}}
 ```
 
 Backend also prints these to terminal for debugging.
