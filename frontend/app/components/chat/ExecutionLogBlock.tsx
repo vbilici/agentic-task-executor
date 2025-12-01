@@ -1,3 +1,4 @@
+import { useRef, useEffect } from "react";
 import { ChevronDown, ChevronRight, Terminal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -33,6 +34,8 @@ export function ExecutionLogBlock({
   isDebugMode,
   onToggleDebugMode,
 }: ExecutionLogBlockProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
   // Filter messages based on debug mode
   const filteredMessages = isDebugMode
     ? executionMessages
@@ -46,6 +49,13 @@ export function ExecutionLogBlock({
   const displayedMessages = isExpanded
     ? filteredMessages
     : filteredMessages.slice(-1);
+
+  // Auto-scroll to bottom when expanded and new messages arrive
+  useEffect(() => {
+    if (isExpanded && scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [isExpanded, filteredMessages.length]);
 
   // If no messages to display, don't render
   if (filteredMessages.length === 0) {
@@ -127,7 +137,7 @@ export function ExecutionLogBlock({
 
         {/* Expanded: show all filtered messages */}
         <CollapsibleContent>
-          <div className="py-1 max-h-96 overflow-y-auto">
+          <div ref={scrollRef} className="py-1 max-h-96 overflow-y-auto">
             {filteredMessages.map((message, index) => (
               <ChatMessage
                 key={index}

@@ -6,6 +6,7 @@ import type {
   TasksListResponse,
   Artifact,
   ArtifactsListResponse,
+  ExecutionLogsResponse,
   ApiError,
 } from "@/types/api";
 
@@ -106,6 +107,21 @@ class ApiClient {
 
   getArtifactDownloadUrl(sessionId: string, artifactId: string): string {
     return `${this.baseUrl}/sessions/${sessionId}/artifacts/${artifactId}/download`;
+  }
+
+  // Execution Logs
+  async getExecutionLogs(
+    sessionId: string,
+    params?: { limit?: number; offset?: number }
+  ): Promise<ExecutionLogsResponse> {
+    const searchParams = new URLSearchParams();
+    if (params?.limit) searchParams.set("limit", params.limit.toString());
+    if (params?.offset) searchParams.set("offset", params.offset.toString());
+
+    const query = searchParams.toString();
+    return this.request<ExecutionLogsResponse>(
+      `/sessions/${sessionId}/execution-logs${query ? `?${query}` : ""}`
+    );
   }
 
   // SSE Endpoints (return URL for EventSource)

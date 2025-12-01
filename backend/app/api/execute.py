@@ -1,9 +1,10 @@
 """Execution API endpoint with SSE streaming."""
 
 import json
+from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
 from app.agent.execution_graph import (
@@ -12,11 +13,29 @@ from app.agent.execution_graph import (
     get_execution_graph_builder,
 )
 from app.models.base import SessionStatus
+from app.models.execution_log import ExecutionLogsResponse
 from app.services.agent_service import agent_service
+from app.services.execution_log_service import execution_log_service
 from app.services.session_service import session_service
 from app.services.task_service import task_service
 
 router = APIRouter(prefix="/sessions", tags=["Execution"])
+
+
+# Event types that should NOT be persisted (streaming tokens)
+_SKIP_PERSIST_EVENTS = {"content"}
+
+
+async def _persist_and_yield_event(
+    session_id: UUID, event_type: str, event: dict
+) -> str:
+    """Persist event to database and return SSE formatted string.
+
+    Skips persisting streaming content tokens as they add no value on reload.
+    """
+    if event_type not in _SKIP_PERSIST_EVENTS:
+        await execution_log_service.create_from_event(session_id, event)
+    return _sse_event(event_type, event)
 
 
 @router.post("/{session_id}/execute")
@@ -85,19 +104,15 @@ async def execute_tasks(session_id: UUID) -> StreamingResponse:
                 }
 
                 # Emit task_selected event
-                yield _sse_event(
-                    "task_selected",
-                    {"type": "task_selected", "taskId": task_id},
-                )
+                event = {"type": "task_selected", "taskId": task_id}
+                yield await _persist_and_yield_event(session_id, "task_selected", event)
 
                 # Start the task in database
                 try:
                     await task_service.start_task(task.id)
                 except ValueError as e:
-                    yield _sse_event(
-                        "error",
-                        {"type": "error", "taskId": task_id, "error": str(e)},
-                    )
+                    event = {"type": "error", "taskId": task_id, "error": str(e)}
+                    yield await _persist_and_yield_event(session_id, "error", event)
                     failed_count += 1
                     continue
 
@@ -125,28 +140,34 @@ async def execute_tasks(session_id: UUID) -> StreamingResponse:
                         # Track completion info
                         if event_type == "task_completed":
                             task_result = event.get("result", "Task completed")
-                            yield _sse_event(event_type, event)
+                            yield await _persist_and_yield_event(
+                                session_id, event_type, event
+                            )
 
                         elif event_type == "reflection":
                             task_reflection = event.get("text")
-                            yield _sse_event(event_type, event)
+                            yield await _persist_and_yield_event(
+                                session_id, event_type, event
+                            )
 
                         elif event_type == "error":
                             task_failed = True
                             error_message = event.get("error", "Unknown error")
-                            yield _sse_event(event_type, event)
+                            yield await _persist_and_yield_event(
+                                session_id, event_type, event
+                            )
 
                         else:
-                            # Forward other events (tool_call, tool_result, content)
-                            yield _sse_event(event_type, event)
+                            # Forward other events (tool_call, tool_result, content, artifact_*)
+                            yield await _persist_and_yield_event(
+                                session_id, event_type, event
+                            )
 
                 except Exception as e:
                     task_failed = True
                     error_message = str(e)
-                    yield _sse_event(
-                        "error",
-                        {"type": "error", "taskId": task_id, "error": error_message},
-                    )
+                    event = {"type": "error", "taskId": task_id, "error": error_message}
+                    yield await _persist_and_yield_event(session_id, "error", event)
 
                 # Update task in database
                 try:
@@ -173,36 +194,30 @@ async def execute_tasks(session_id: UUID) -> StreamingResponse:
                         )
                 except ValueError as e:
                     # Task status transition failed
-                    yield _sse_event(
-                        "error",
-                        {
-                            "type": "error",
-                            "taskId": task_id,
-                            "error": f"Failed to update task status: {e}",
-                        },
-                    )
+                    event = {
+                        "type": "error",
+                        "taskId": task_id,
+                        "error": f"Failed to update task status: {e}",
+                    }
+                    yield await _persist_and_yield_event(session_id, "error", event)
 
             # Update session status to completed
             await session_service.update_status(session_id, SessionStatus.COMPLETED)
 
             # Emit done event with summary
-            yield _sse_event(
-                "done",
-                {
-                    "type": "done",
-                    "summary": {
-                        "total": total_tasks,
-                        "completed": completed_count,
-                        "failed": failed_count,
-                    },
+            event = {
+                "type": "done",
+                "summary": {
+                    "total": total_tasks,
+                    "completed": completed_count,
+                    "failed": failed_count,
                 },
-            )
+            }
+            yield await _persist_and_yield_event(session_id, "done", event)
 
         except Exception as e:
-            yield _sse_event(
-                "error",
-                {"type": "error", "error": str(e)},
-            )
+            event = {"type": "error", "error": str(e)}
+            yield await _persist_and_yield_event(session_id, "error", event)
 
     return StreamingResponse(
         event_stream(),
@@ -318,3 +333,27 @@ async def summarize_session(session_id: UUID) -> StreamingResponse:
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@router.get("/{session_id}/execution-logs")
+async def get_execution_logs(
+    session_id: UUID,
+    limit: Annotated[int, Query(ge=1, le=5000)] = 1000,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> ExecutionLogsResponse:
+    """Get execution logs for a session.
+
+    Returns all execution events that were generated during task execution.
+    Used to restore the execution log view when reloading a session.
+    """
+    # Verify session exists
+    session = await session_service.get(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    logs = await execution_log_service.list_by_session(
+        session_id, limit=limit, offset=offset
+    )
+    total = await execution_log_service.count_by_session(session_id)
+
+    return ExecutionLogsResponse(logs=logs, total=total)

@@ -205,6 +205,29 @@ export type ExecutionEvent =
   | ExecutionErrorEvent
   | ExecutionDoneEvent;
 
+// Execution Log types (persisted to database)
+export type ExecutionLogEventType =
+  | "task_selected"
+  | "tool_call"
+  | "tool_result"
+  | "content"
+  | "reflection"
+  | "task_completed"
+  | "artifact_analysis_start"
+  | "artifact_analysis_complete"
+  | "artifact_created"
+  | "error"
+  | "done";
+
+export interface ExecutionLog {
+  id: string;
+  sessionId: string;
+  taskId: string | null;
+  eventType: ExecutionLogEventType;
+  eventData: ExecutionEvent;
+  createdAt: string;
+}
+
 // API Response types
 export interface SessionsListResponse {
   sessions: Session[];
@@ -217,6 +240,11 @@ export interface TasksListResponse {
 
 export interface ArtifactsListResponse {
   artifacts: ArtifactSummary[];
+}
+
+export interface ExecutionLogsResponse {
+  logs: ExecutionLog[];
+  total: number;
 }
 
 // FastAPI returns errors in this format

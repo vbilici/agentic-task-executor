@@ -11,6 +11,7 @@ import type {
   TaskStatus,
   ArtifactSummary,
   ArtifactType,
+  ExecutionLog,
 } from "@/types/api";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { ChatMessageList, type ChatMessageItem } from "@/components/chat/ChatMessageList";
@@ -89,6 +90,24 @@ export function SessionPage() {
   useEffect(() => {
     tasksRef.current = tasks;
   }, [tasks]);
+
+  // Helper to convert ExecutionLog to ChatMessageItem
+  const convertExecutionLogToMessage = useCallback(
+    (log: ExecutionLog, taskList: Task[]): ChatMessageItem => {
+      const taskTitle = log.taskId
+        ? taskList.find((t) => t.id === log.taskId)?.title
+        : undefined;
+      return {
+        role: "system" as const,
+        content: "",
+        executionEvent: {
+          ...(log.eventData as ExecutionEvent),
+          taskTitle,
+        },
+      };
+    },
+    []
+  );
 
   // Use a ref to track streaming content for the done handler
   const streamingContentRef = useRef("");
@@ -296,16 +315,49 @@ export function SessionPage() {
     try {
       const sessionData = await api.getSession(sessionId);
       setSession(sessionData);
-      setMessages(sessionData.messages);
       setTasks(sessionData.tasks);
       setArtifacts(sessionData.artifacts);
+
+      // Start with chat messages
+      let allMessages: ChatMessageItem[] = [...sessionData.messages];
+
+      // Load execution logs for executed sessions
+      if (
+        sessionData.status === "completed" ||
+        sessionData.status === "executing"
+      ) {
+        try {
+          const logsResponse = await api.getExecutionLogs(sessionId);
+          if (logsResponse.logs.length > 0) {
+            // Add "Starting task execution..." marker before execution logs
+            allMessages.push({
+              role: "system" as const,
+              content: "Starting task execution...",
+            });
+
+            // Convert execution logs to messages (filter out streaming content tokens)
+            const executionMessages = logsResponse.logs
+              .filter((log) => log.eventType !== "content")
+              .map((log) => convertExecutionLogToMessage(log, sessionData.tasks));
+            allMessages = [...allMessages, ...executionMessages];
+
+            // For completed sessions, check if summary exists in messages
+            // (the summary message is already included in sessionData.messages from checkpoint)
+          }
+        } catch (logError) {
+          console.error("Failed to load execution logs:", logError);
+          // Continue without execution logs - they're not critical for basic functionality
+        }
+      }
+
+      setMessages(allMessages);
     } catch (error) {
       console.error("Failed to load session:", error);
       navigate("/");
     } finally {
       setIsLoading(false);
     }
-  }, [sessionId, navigate]);
+  }, [sessionId, navigate, convertExecutionLogToMessage]);
 
   useEffect(() => {
     if (sessionId) {
