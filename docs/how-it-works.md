@@ -1,6 +1,6 @@
-# How Libra Works
+# How App Works
 
-Thid demo app is an **Agent-Driven TODO Executor** - an AI-powered application that helps users achieve their goals by breaking them down into actionable tasks and executing them autonomously.
+This demo app is an **Agent-Driven TODO Executor** - an AI-powered application that helps users achieve their goals by breaking them down into actionable tasks and executing them autonomously.
 
 ## The Big Picture
 
@@ -91,7 +91,7 @@ Based on the evaluation, the agent takes one of two paths:
 
 **Path B: `chat_only`** (Goal needs clarification)
 - Continues the conversation naturally
-- Asks max 3 clarifying question at a time
+- Asks max 3 clarifying questions at a time
 - Guides you toward a more specific goal
 
 ### Example Interaction

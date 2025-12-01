@@ -45,7 +45,7 @@ Claude Code serves as the central orchestrator, delegating specialized tasks to 
 
 ## Custom MCP Server
 
-The **libra-mcp-server** (`packages/libra-mcp-server/`) is a custom [Model Context Protocol](https://modelcontextprotocol.io/) server that extends Claude Code's capabilities for this app.
+The **libra-mcp-server** (`packages/libra-mcp-server/`) is a custom [Model Context Protocol](https://modelcontextprotocol.io/) server that extends Claude Code's capabilities. Originally created for a previous project, it was adapted for this app. Might be a good open source project in the future.
 
 ### Why a Custom MCP Server?
 

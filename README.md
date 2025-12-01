@@ -1,4 +1,4 @@
-# Libra
+# App
 
 An **Agent-Driven TODO Executor** - a full-stack application where an AI agent chats with users about goals, generates structured TODO lists, and executes tasks with real-time visibility.
 
@@ -10,9 +10,11 @@ User Goal → Planning Agent → TODO List → Execution Loop → Results
      └──────────── Chat Interface ←─────────────┘
 ```
 
+For a detailed explanation of how the system works, see [docs/README.md](docs/README.md).
+
 ## Agent Architecture
 
-Libra uses [LangGraph](https://langchain-ai.github.io/langgraph/) to orchestrate two distinct agent workflows. See [How It Works](docs/how-it-works.md) for detailed architecture diagrams and flow explanations.
+App uses [LangGraph](https://langchain-ai.github.io/langgraph/) to orchestrate two distinct agent workflows. See [How It Works](docs/how-it-works.md) for detailed architecture diagrams and flow explanations.
 
 - **Planning Graph** - Handles chat interactions and task generation from user goals
 - **Execution Graph** - Executes individual tasks using tools (web search, calculator, etc.)
@@ -37,7 +39,7 @@ Libra uses [LangGraph](https://langchain-ai.github.io/langgraph/) to orchestrate
 | **Backend** | Python 3.13, FastAPI, LangGraph, LangChain |
 | **Frontend** | TypeScript, Vite, React 18, shadcn/ui, Tailwind CSS |
 | **Database** | Supabase (PostgreSQL) |
-| **LLM** | Anthropic Claude API |
+| **LLM** | OpenAI API |
 | **Tools** | Tavily API (web search) |
 | **Real-time** | SSE (Server-Sent Events) |
 
@@ -48,7 +50,7 @@ Libra uses [LangGraph](https://langchain-ai.github.io/langgraph/) to orchestrate
 - **uv** - Python package manager ([install](https://docs.astral.sh/uv/getting-started/installation/))
 - **pnpm** - Node.js package manager ([install](https://pnpm.io/installation))
 - **Supabase** account with a project
-- **Anthropic** API key
+- **OpenAI** API key
 - **Tavily** API key (for web search)
 
 ## Installation
@@ -76,7 +78,7 @@ Create a `.env` file in the `backend/` directory:
 
 ```env
 DATABASE_URL=postgresql://postgres:[PASSWORD]@[HOST]:[PORT]/postgres
-ANTHROPIC_API_KEY=sk-ant-...
+OPENAI_API_KEY=sk-...
 TAVILY_API_KEY=tvly-...
 HOST=0.0.0.0
 PORT=8000
@@ -209,6 +211,8 @@ libra/
 ```
 
 ## Documentation
+
+See [docs/README.md](docs/README.md) for the full documentation index.
 
 | Document | Description |
 |----------|-------------|

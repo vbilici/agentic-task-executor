@@ -1,40 +1,73 @@
-# If I Had More Time, I would implement:
+# Future Development Ideas
 
-## Supabase Auth integration for multi user support
-- Add RLS policies for each table for db level isolation and security for users
+Ideas for future enhancements, grouped by area.
+
+---
+
+## User Management & Security
+
+### Supabase Auth Integration
+- Add RLS policies for each table for db-level isolation and security for users
 - Typical sign-up, sign-in, password update/reset workflows
 
-## Multi modal input/output
-- ability to upload pdf, images etc...
-- text to speech for dictationg the prompt
-- ability to generate images, pdfs, charts, diagrams, etc..
+### Rate Limiting
+- Add rate limiter to the backend to prevent abuse
 
-## Use storage for artifacts 
-- Use S3 like storage system for the generated artifacts
-- Ability to generate files in different file formats, such as csv, pdf, images
+---
 
-## Search function
-- create search function for searching sessions and artifact
-- use RAG for artifact search
+## Agent Architecture
 
-## Better Clarification (Human in the loop)
-- When the execution starts, if the active requires some more clarification based on the findings or in the beginning, it should ask to the user
+### Subgraph Structure
+- Put the task execution graph inside the planning graph as a subgraph
+- User could start execution by prompting directly
+- Would give better context to the LLM
 
-## Use subgraphs
-- I would put the task execution graph inside the planning graph as a subgraph. So that the user could just start execution by prompting
-- It would give a better context to the LLM
+### Parallel Task Execution
+- Create a dependency tree and execute tasks in parallel where possible
+- Could increase speed by up to 50%, though adds complexity
 
-## Parallel execution of tasks
-- I would create a dependecy tree and try to execute tasks in parallel if possible. Although it increases the comlexity, it can increase the speed up to 50%.
+### Better Clarification (Human in the Loop)
+- When execution starts, if a task requires more clarification based on findings, ask the user
+- Pause and prompt for input when needed
 
-## OpenAI Rate limiter error 
-- Currently I use langchain's default exponential max_retry parameter but it handles the exceptions inside the langchain. To have a better UX I woud handle it manually
+### Task Management After Execution
+- Allow adding new tasks after execution completes
+- Enable editing or removing tasks and re-executing
+- Continue working on a session instead of it becoming read-only
 
-## Langfuse or similar for Observibility and Prompt management
-- Due to time constraints I kept the prompts inside the code but I would wither have a folder for prompts or better use a service like langfuse to menage and version the prompts
+### Concurrent Session Execution
+- Allow working on a new session while another session's execution is ongoing
+- Background execution with notifications when complete
 
-## Rate limiters
-- I would add rate limiter to the backend
+---
 
+## Input/Output Capabilities
 
+### Multi-Modal Input/Output
+- Ability to upload PDFs, images, etc.
+- Text-to-speech for dictating prompts
+- Ability to generate images, PDFs, charts, diagrams, etc.
 
+### Artifact Storage
+- Use S3-like storage system for generated artifacts
+- Generate files in different formats: CSV, PDF, images
+
+---
+
+## Search & Discovery
+
+### Session and Artifact Search
+- Create search function for searching sessions and artifacts
+- Use RAG for semantic artifact search
+
+---
+
+## Observability & Error Handling
+
+### Prompt Management with Langfuse
+- Move prompts out of code into a dedicated folder or service
+- Use Langfuse (or similar) to manage and version prompts
+
+### OpenAI Rate Limit Handling
+- Currently using LangChain's default exponential max_retry parameter
+- Handle rate limit exceptions manually for better UX feedback
