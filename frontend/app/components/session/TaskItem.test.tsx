@@ -13,7 +13,6 @@ function createMockTask(overrides: Partial<Task> = {}): Task {
     description: null,
     status: 'pending',
     result: null,
-    reflection: null,
     order: 0,
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
@@ -319,34 +318,6 @@ describe('TaskItem', () => {
       expect(within(dialog).queryByText('Error')).not.toBeInTheDocument()
     })
 
-    it('displays reflection when provided', async () => {
-      const user = userEvent.setup()
-      const task = createMockTask({
-        status: 'done',
-        result: 'Task result',
-        reflection: 'This task helped me understand the problem better',
-      })
-      render(<TaskItem task={task} />)
-
-      const card = screen.getByText('Test Task').closest('div[class*="cursor-pointer"]')
-      await user.click(card!)
-
-      const dialog = screen.getByRole('dialog')
-      expect(within(dialog).getByText('Reflection')).toBeInTheDocument()
-      expect(within(dialog).getByText('This task helped me understand the problem better')).toBeInTheDocument()
-    })
-
-    it('does not display reflection section when reflection is null', async () => {
-      const user = userEvent.setup()
-      const task = createMockTask({ reflection: null })
-      render(<TaskItem task={task} />)
-
-      const card = screen.getByText('Test Task').closest('div[class*="cursor-pointer"]')
-      await user.click(card!)
-
-      const dialog = screen.getByRole('dialog')
-      expect(within(dialog).queryByText('Reflection')).not.toBeInTheDocument()
-    })
   })
 
   describe('card styling by status', () => {
@@ -384,7 +355,6 @@ describe('TaskItem', () => {
         description: 'Full description here',
         status: 'done',
         result: 'Successfully completed',
-        reflection: 'Learned a lot from this',
         order: 4,
       })
       render(<TaskItem task={task} />)
@@ -404,8 +374,6 @@ describe('TaskItem', () => {
       expect(within(dialog).getByText('Full description here')).toBeInTheDocument()
       // Result
       expect(within(dialog).getByText('Successfully completed')).toBeInTheDocument()
-      // Reflection
-      expect(within(dialog).getByText('Learned a lot from this')).toBeInTheDocument()
     })
   })
 })

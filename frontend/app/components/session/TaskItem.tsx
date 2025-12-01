@@ -164,17 +164,6 @@ export function TaskItem({ task }: TaskItemProps) {
               </div>
             )}
 
-            {/* Reflection */}
-            {task.reflection && (
-              <div className="p-3 rounded-md bg-blue-50 dark:bg-blue-950/50">
-                <p className="text-sm font-medium mb-1 text-blue-700 dark:text-blue-300">
-                  Reflection
-                </p>
-                <p className="text-sm text-blue-600 dark:text-blue-400 italic">
-                  {task.reflection}
-                </p>
-              </div>
-            )}
           </div>
         </DialogContent>
       </Dialog>

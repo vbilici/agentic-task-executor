@@ -32,7 +32,6 @@ class TaskUpdate(BaseDBModel):
     description: str | None = Field(default=None, max_length=2000)
     status: TaskStatus | None = None
     result: str | None = None
-    reflection: str | None = None
 
 
 class Task(TaskBase, TimestampMixin):
@@ -41,4 +40,3 @@ class Task(TaskBase, TimestampMixin):
     id: UUID
     session_id: UUID
     result: str | None = None
-    reflection: str | None = None

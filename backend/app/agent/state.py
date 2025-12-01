@@ -39,9 +39,7 @@ class ExecutionState(TypedDict):
         tasks: List of all tasks in the session
         artifacts: Generated artifacts during execution
         task_result: Result summary from task execution
-        task_reflection: Intermediate reflection from artifact_creator
         created_artifact: Artifact created by the artifact_creator node
-        final_reflection: Final reflection including artifact outcome
         is_complete: Whether execution is complete
     """
 
@@ -51,7 +49,5 @@ class ExecutionState(TypedDict):
     tasks: list[dict[str, str | None]]
     artifacts: list[dict[str, str | None]]
     task_result: str | None
-    task_reflection: str | None
     created_artifact: dict[str, str] | None
-    final_reflection: str | None
     is_complete: bool

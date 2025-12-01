@@ -15,7 +15,6 @@ class ExecutionLogEventType(str, Enum):
     TOOL_CALL = "tool_call"
     TOOL_RESULT = "tool_result"
     CONTENT = "content"
-    REFLECTION = "reflection"
     TASK_COMPLETED = "task_completed"
     ARTIFACT_ANALYSIS_START = "artifact_analysis_start"
     ARTIFACT_ANALYSIS_COMPLETE = "artifact_analysis_complete"

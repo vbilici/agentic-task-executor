@@ -25,7 +25,6 @@ export interface Task {
   description: string | null;
   status: TaskStatus;
   result: string | null;
-  reflection: string | null;
   order: number;
   createdAt: string;
   updatedAt: string;
@@ -110,7 +109,6 @@ export type ExecutionEventType =
   | "artifact_analysis_complete"
   | "artifact_created"
   | "task_completed"
-  | "reflection"
   | "summary_creating"
   | "execution_summary"
   | "error"
@@ -161,12 +159,6 @@ export interface TaskCompletedEvent {
   result: string;
 }
 
-export interface ReflectionEvent {
-  type: "reflection";
-  taskId: string;
-  text: string;
-}
-
 export interface ExecutionErrorEvent {
   type: "error";
   taskId?: string;
@@ -199,7 +191,6 @@ export type ExecutionEvent =
   | ArtifactAnalysisCompleteEvent
   | ArtifactCreatedEvent
   | TaskCompletedEvent
-  | ReflectionEvent
   | SummaryCreatingEvent
   | ExecutionSummaryEvent
   | ExecutionErrorEvent
@@ -211,7 +202,6 @@ export type ExecutionLogEventType =
   | "tool_call"
   | "tool_result"
   | "content"
-  | "reflection"
   | "task_completed"
   | "artifact_analysis_start"
   | "artifact_analysis_complete"

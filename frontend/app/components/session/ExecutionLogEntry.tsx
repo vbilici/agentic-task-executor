@@ -5,7 +5,6 @@ import {
   XCircle,
   Wrench,
   ArrowRight,
-  MessageSquare,
   AlertCircle,
   ListTodo,
   FileSearch,
@@ -70,14 +69,6 @@ function getEventConfig(event: ExecutionEvent): EventConfig {
             textColor: "text-red-700 dark:text-red-300",
             label: "Task Failed",
           };
-    case "reflection":
-      return {
-        icon: MessageSquare,
-        bgColor: "bg-gray-50 dark:bg-gray-900",
-        borderColor: "border-gray-200 dark:border-gray-700",
-        textColor: "text-gray-700 dark:text-gray-300",
-        label: "Reflection",
-      };
     case "error":
       return {
         icon: AlertCircle,
@@ -190,10 +181,6 @@ function renderEventContent(
             <p className="text-xs mt-1 text-muted-foreground">{event.result}</p>
           )}
         </div>
-      );
-    case "reflection":
-      return (
-        <p className="text-sm italic text-muted-foreground">{event.text}</p>
       );
     case "error":
       return <p className="text-sm font-medium">{event.error}</p>;

@@ -6,7 +6,6 @@ import {
   Wrench,
   CheckCircle2,
   XCircle,
-  MessageSquare,
   AlertCircle,
   Zap,
   FileSearch,
@@ -69,14 +68,6 @@ function ExecutionEventMessage({ event, compact = false }: { event: ExecutionEve
               label: "Task failed",
               content: event.result || event.taskTitle,
             };
-      case "reflection":
-        return {
-          icon: MessageSquare,
-          bgColor: "bg-purple-50 dark:bg-purple-950",
-          iconColor: "text-purple-600",
-          label: "Reflection",
-          content: event.text,
-        };
       case "error":
         return {
           icon: AlertCircle,

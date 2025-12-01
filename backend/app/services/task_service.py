@@ -88,14 +88,11 @@ class TaskService:
         task_id: UUID,
         status: TaskStatus,
         result_text: str | None = None,
-        reflection: str | None = None,
     ) -> Task | None:
-        """Update task status with optional result and reflection."""
+        """Update task status with optional result."""
         data: dict[str, str] = {"status": status.value}
         if result_text is not None:
             data["result"] = result_text
-        if reflection is not None:
-            data["reflection"] = reflection
 
         result = (
             self.client.table(self.table).update(data).eq("id", str(task_id)).execute()
@@ -174,14 +171,12 @@ class TaskService:
         self,
         task_id: UUID,
         result_text: str,
-        reflection: str | None = None,
     ) -> Task:
         """Complete a task - changes status from in_progress to done.
 
         Args:
             task_id: The task UUID to complete
             result_text: The result/output of the task execution
-            reflection: Optional agent reflection on the task
 
         Returns:
             The updated task
@@ -203,8 +198,6 @@ class TaskService:
             "status": TaskStatus.DONE.value,
             "result": result_text,
         }
-        if reflection is not None:
-            data["reflection"] = reflection
 
         result = (
             self.client.table(self.table).update(data).eq("id", str(task_id)).execute()

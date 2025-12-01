@@ -268,15 +268,6 @@ export function SessionPage() {
             )
           );
           break;
-        case "reflection":
-          setTasks((prev) =>
-            prev.map((task) =>
-              task.id === event.taskId
-                ? { ...task, reflection: event.text }
-                : task
-            )
-          );
-          break;
         case "artifact_created": {
           // Add new artifact to the list
           const newArtifact: ArtifactSummary = {

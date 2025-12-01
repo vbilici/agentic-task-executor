@@ -53,7 +53,6 @@ async def execute_tasks(session_id: UUID) -> StreamingResponse:
     - tool_call: When the agent calls a tool
     - tool_result: When a tool returns a result
     - task_completed: When a task finishes (done/failed)
-    - reflection: Agent's reflection on task completion
     - error: When an error occurs
     - done: When all tasks are processed
     """
@@ -126,7 +125,6 @@ async def execute_tasks(session_id: UUID) -> StreamingResponse:
 
                 # Track task result for database update
                 task_result = None
-                task_reflection = None
                 task_failed = False
                 error_message = None
 
@@ -140,12 +138,6 @@ async def execute_tasks(session_id: UUID) -> StreamingResponse:
                         # Track completion info
                         if event_type == "task_completed":
                             task_result = event.get("result", "Task completed")
-                            yield await _persist_and_yield_event(
-                                session_id, event_type, event
-                            )
-
-                        elif event_type == "reflection":
-                            task_reflection = event.get("text")
                             yield await _persist_and_yield_event(
                                 session_id, event_type, event
                             )
@@ -181,7 +173,6 @@ async def execute_tasks(session_id: UUID) -> StreamingResponse:
                         await task_service.complete_task(
                             task.id,
                             task_result or "Task completed",
-                            task_reflection,
                         )
                         completed_count += 1
 
