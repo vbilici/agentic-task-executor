@@ -23,6 +23,8 @@ interface SessionListItemProps {
   session: Session;
   isActive: boolean;
   isCollapsed?: boolean;
+  isDisabled?: boolean;
+  disabledReason?: string;
   onSelect: () => void;
   onDelete: () => void;
 }
@@ -45,6 +47,8 @@ export function SessionListItem({
   session,
   isActive,
   isCollapsed = false,
+  isDisabled = false,
+  disabledReason,
   onSelect,
   onDelete,
 }: SessionListItemProps) {
@@ -57,12 +61,14 @@ export function SessionListItem({
         <Tooltip>
           <TooltipTrigger asChild>
             <button
-              onClick={onSelect}
+              onClick={isDisabled ? undefined : onSelect}
+              disabled={isDisabled}
               className={cn(
                 "relative flex w-full items-center justify-center rounded-md p-2 transition-colors",
+                isDisabled && "opacity-50 cursor-not-allowed",
                 isActive
                   ? "bg-accent text-accent-foreground"
-                  : "hover:bg-accent/50 text-muted-foreground"
+                  : !isDisabled && "hover:bg-accent/50 text-muted-foreground"
               )}
               aria-label={session.title || "New Session"}
             >
@@ -76,10 +82,16 @@ export function SessionListItem({
             </button>
           </TooltipTrigger>
           <TooltipContent side="right">
-            <p className="font-medium">{session.title || "New Session"}</p>
-            <p className="text-xs text-muted-foreground capitalize">
-              {session.status}
-            </p>
+            {isDisabled && disabledReason ? (
+              <p className="text-xs">{disabledReason}</p>
+            ) : (
+              <>
+                <p className="font-medium">{session.title || "New Session"}</p>
+                <p className="text-xs text-muted-foreground capitalize">
+                  {session.status}
+                </p>
+              </>
+            )}
           </TooltipContent>
         </Tooltip>
 
@@ -108,24 +120,19 @@ export function SessionListItem({
   }
 
   // Expanded view: full item with title and badge
-  return (
-    <>
-    <div
-      role="button"
-      tabIndex={0}
+  const buttonContent = (
+    <button
+      type="button"
+      disabled={isDisabled}
       className={cn(
-        "group flex w-full items-center gap-2 rounded-md p-2 text-left transition-colors cursor-pointer",
+        "group flex w-full items-center gap-2 rounded-md p-2 text-left transition-colors",
+        isDisabled && "opacity-50 cursor-not-allowed",
+        !isDisabled && "cursor-pointer",
         isActive
           ? "bg-accent text-accent-foreground"
-          : "hover:bg-accent/50"
+          : !isDisabled && "hover:bg-accent/50"
       )}
-      onClick={onSelect}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onSelect();
-        }
-      }}
+      onClick={isDisabled ? undefined : onSelect}
     >
       <div
         className={cn(
@@ -144,17 +151,35 @@ export function SessionListItem({
           {session.status}
         </Badge>
       </div>
-      <button
-        className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-        onClick={(e) => {
-          e.stopPropagation();
-          setShowDeleteConfirm(true);
-        }}
-        aria-label="Delete session"
-      >
-        <Trash2 className="h-4 w-4" />
-      </button>
-    </div>
+      {!isDisabled && (
+        <button
+          className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowDeleteConfirm(true);
+          }}
+          aria-label="Delete session"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      )}
+    </button>
+  );
+
+  return (
+    <>
+    {isDisabled && disabledReason ? (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {buttonContent}
+        </TooltipTrigger>
+        <TooltipContent>
+          <p className="text-xs">{disabledReason}</p>
+        </TooltipContent>
+      </Tooltip>
+    ) : (
+      buttonContent
+    )}
 
     <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
       <AlertDialogContent>

@@ -4,6 +4,7 @@ import { api } from "@/services/api";
 import { useSSE } from "@/hooks/useSSE";
 import { useMobileNavContext } from "@/contexts/MobileNavContext";
 import { useSessionContext } from "@/contexts/SessionContext";
+import { useExecutionContext } from "@/contexts/ExecutionContext";
 import type {
   Task,
   ChatEvent,
@@ -43,6 +44,7 @@ export function SessionPage() {
     setSessionTitle,
   } = useMobileNavContext();
   const { updateSession } = useSessionContext();
+  const { setBusySession } = useExecutionContext();
 
   // Session state
   const [session, setSession] = useState<SessionDetail | null>(null);
@@ -116,6 +118,12 @@ export function SessionPage() {
     sessionIdRef.current = sessionId;
   }, [sessionId]);
 
+  // Ref to setBusySession for use in SSE handlers
+  const setBusySessionRef = useRef(setBusySession);
+  useEffect(() => {
+    setBusySessionRef.current = setBusySession;
+  }, [setBusySession]);
+
   // Function to refresh session title after chat completes
   const refreshSessionTitle = useCallback(async () => {
     const currentSessionId = sessionIdRef.current;
@@ -188,6 +196,8 @@ export function SessionPage() {
           setStreamingContent("");
           setIsSending(false);
           setIsExtractingTasks(false);
+          // Clear global busy state
+          setBusySessionRef.current(null);
           // Refresh session title (may have been updated on first message)
           refreshSessionTitleRef.current();
           // Auto-focus chat input after response completes
@@ -199,6 +209,8 @@ export function SessionPage() {
           setStreamingContent("");
           setIsSending(false);
           setIsExtractingTasks(false);
+          // Clear global busy state
+          setBusySessionRef.current(null);
           break;
       }
     }, []),
@@ -244,6 +256,8 @@ export function SessionPage() {
           }
           setStreamingContent("");
           setIsSummarizing(false);
+          // Clear global busy state (execution + summarization complete)
+          setBusySessionRef.current(null);
           // Auto-focus chat input after summarization completes
           setShouldFocusInput(true);
           break;
@@ -252,6 +266,8 @@ export function SessionPage() {
           console.error("Summarize error:", (event as { type: "error"; error: string }).error);
           setStreamingContent("");
           setIsSummarizing(false);
+          // Clear global busy state
+          setBusySessionRef.current(null);
           break;
       }
     }, [sessionId]),
@@ -347,11 +363,24 @@ export function SessionPage() {
           setSession((prev) =>
             prev ? { ...prev, status: "paused" } : prev
           );
+          // Clear global busy state
+          setBusySessionRef.current(null);
           break;
         case "error":
-          if (!event.taskId) {
+          if (event.taskId) {
+            // Task-specific error - update task status to failed
+            setTasks((prev) =>
+              prev.map((task) =>
+                task.id === event.taskId
+                  ? { ...task, status: "failed" as TaskStatus }
+                  : task
+              )
+            );
+          } else {
             // Global error - stop execution
             setIsExecuting(false);
+            // Clear global busy state
+            setBusySessionRef.current(null);
           }
           break;
       }
@@ -418,6 +447,9 @@ export function SessionPage() {
   const handleSendMessage = async (message: string) => {
     if (!sessionId || isSending) return;
 
+    // Set global busy state
+    setBusySession(sessionId);
+
     // Add user message immediately (optimistic update)
     setMessages((prev) => [...prev, { role: "user", content: message }]);
     setIsSending(true);
@@ -430,6 +462,9 @@ export function SessionPage() {
 
   const handleExecute = () => {
     if (!sessionId || isExecuting) return;
+
+    // Set global busy state
+    setBusySession(sessionId);
 
     setIsExecuting(true);
 

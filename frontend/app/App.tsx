@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { SessionProvider } from "@/contexts/SessionContext";
+import { ExecutionProvider } from "@/contexts/ExecutionContext";
 import { MobileNavProvider } from "@/contexts/MobileNavContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { HomePage } from "@/pages/HomePage";
@@ -12,15 +13,17 @@ function App() {
     <ErrorBoundary>
       <BrowserRouter>
         <SessionProvider>
-          <MobileNavProvider>
-            <Routes>
-              <Route element={<AppLayout />}>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/sessions/:sessionId" element={<SessionPage />} />
-              </Route>
-            </Routes>
-            <Toaster />
-          </MobileNavProvider>
+          <ExecutionProvider>
+            <MobileNavProvider>
+              <Routes>
+                <Route element={<AppLayout />}>
+                  <Route path="/" element={<HomePage />} />
+                  <Route path="/sessions/:sessionId" element={<SessionPage />} />
+                </Route>
+              </Routes>
+              <Toaster />
+            </MobileNavProvider>
+          </ExecutionProvider>
         </SessionProvider>
       </BrowserRouter>
     </ErrorBoundary>

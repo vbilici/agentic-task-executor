@@ -2,6 +2,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSessionContext } from "@/contexts/SessionContext";
+import { useExecutionContext } from "@/contexts/ExecutionContext";
 import { SessionListItem } from "@/components/session/SessionListItem";
 import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 import { Button } from "@/components/ui/button";
@@ -20,8 +21,13 @@ export function SessionListContent({
   const { sessionId } = useParams<{ sessionId?: string }>();
   const { sessions, isLoading, isCreating, createSession, deleteSession } =
     useSessionContext();
+  const { busySessionId } = useExecutionContext();
 
   const handleSelectSession = (id: string) => {
+    // Block navigation if another session is busy
+    if (busySessionId && id !== busySessionId) {
+      return;
+    }
     navigate(`/sessions/${id}`);
     onSessionSelect?.();
   };
@@ -45,7 +51,7 @@ export function SessionListContent({
       <div className="p-2">
         <Button
           onClick={handleCreateSession}
-          disabled={isCreating}
+          disabled={isCreating || busySessionId !== null}
           variant="outline"
           className={cn(
             "w-full justify-start gap-2",
@@ -81,6 +87,8 @@ export function SessionListContent({
                 session={session}
                 isActive={session.id === sessionId}
                 isCollapsed={isCollapsed}
+                isDisabled={busySessionId !== null && session.id !== busySessionId}
+                disabledReason="Cannot switch sessions while an operation is in progress"
                 onSelect={() => handleSelectSession(session.id)}
                 onDelete={() => handleDeleteSession(session.id)}
               />

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
-import { useSSE, SSEOptions } from './useSSE'
+import { useSSE } from './useSSE'
 
 /**
  * Helper to create a mock ReadableStream that simulates SSE events.
