@@ -17,6 +17,7 @@ const MAIN_EVENT_TYPES: ExecutionEventType[] = [
   "artifact_analysis_start",
   "artifact_created",
   "artifact_analysis_complete",
+  "paused",
   "error",
   "done",
 ];

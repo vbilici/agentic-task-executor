@@ -14,6 +14,7 @@ interface TasksPanelContentProps {
   pendingTaskCount: number;
   onExecute: () => void;
   showExecuteButton: boolean;
+  isResume?: boolean;
 }
 
 export function TasksPanelContent({
@@ -24,6 +25,7 @@ export function TasksPanelContent({
   pendingTaskCount,
   onExecute,
   showExecuteButton,
+  isResume = false,
 }: TasksPanelContentProps) {
   return (
     <div className="flex flex-col h-full">
@@ -56,7 +58,7 @@ export function TasksPanelContent({
           ) : (
             <div className="space-y-2">
               {tasks.map((task) => (
-                <TaskItem key={task.id} task={task} />
+                <TaskItem key={task.id} task={task} isPaused={isResume} />
               ))}
             </div>
           )}
@@ -71,6 +73,7 @@ export function TasksPanelContent({
             disabled={!canExecute}
             isExecuting={isExecuting}
             pendingTaskCount={pendingTaskCount}
+            isResume={isResume}
           />
         </div>
       )}

@@ -22,6 +22,8 @@ interface RightSidebarProps {
   isExtractingTasks?: boolean;
   // Optional: control which tab is initially open
   defaultTab?: TabType;
+  // Resume mode (paused session)
+  isResume?: boolean;
 }
 
 export function RightSidebar({
@@ -35,6 +37,7 @@ export function RightSidebar({
   showExecuteButton,
   isExtractingTasks = false,
   defaultTab = null,
+  isResume = false,
 }: RightSidebarProps) {
   const [activeTab, setActiveTab] = useState<TabType>(defaultTab);
 
@@ -74,6 +77,7 @@ export function RightSidebar({
               pendingTaskCount={pendingTaskCount}
               onExecute={onExecute}
               showExecuteButton={showExecuteButton}
+              isResume={isResume}
             />
           ) : (
             <ArtifactsPanelContent

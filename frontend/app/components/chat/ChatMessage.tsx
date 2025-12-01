@@ -11,6 +11,7 @@ import {
   FileSearch,
   FileX,
   FileCheck,
+  Pause,
 } from "lucide-react";
 
 type ExecutionEventWithTitle = ExecutionEvent & { taskTitle?: string };
@@ -107,6 +108,14 @@ function ExecutionEventMessage({ event, compact = false }: { event: ExecutionEve
           iconColor: "text-purple-600",
           label: "Artifact created",
           content: `${event.name} (${event.artifactType})`,
+        };
+      case "paused":
+        return {
+          icon: Pause,
+          bgColor: "bg-amber-50 dark:bg-amber-950",
+          iconColor: "text-amber-600",
+          label: "Execution paused",
+          content: "Session was paused. Click Continue to resume.",
         };
       default:
         return {

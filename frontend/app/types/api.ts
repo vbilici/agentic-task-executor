@@ -1,5 +1,5 @@
 // Session types
-export type SessionStatus = "planning" | "executing" | "completed";
+export type SessionStatus = "planning" | "executing" | "paused" | "completed";
 
 export interface Session {
   id: string;
@@ -111,6 +111,7 @@ export type ExecutionEventType =
   | "task_completed"
   | "summary_creating"
   | "execution_summary"
+  | "paused"
   | "error"
   | "done";
 
@@ -183,6 +184,11 @@ export interface ExecutionDoneEvent {
   };
 }
 
+export interface ExecutionPausedEvent {
+  type: "paused";
+  reason: "client_disconnected" | "user_requested";
+}
+
 export type ExecutionEvent =
   | TaskSelectedEvent
   | ToolCallEvent
@@ -193,6 +199,7 @@ export type ExecutionEvent =
   | TaskCompletedEvent
   | SummaryCreatingEvent
   | ExecutionSummaryEvent
+  | ExecutionPausedEvent
   | ExecutionErrorEvent
   | ExecutionDoneEvent;
 
@@ -206,6 +213,7 @@ export type ExecutionLogEventType =
   | "artifact_analysis_start"
   | "artifact_analysis_complete"
   | "artifact_created"
+  | "paused"
   | "error"
   | "done";
 

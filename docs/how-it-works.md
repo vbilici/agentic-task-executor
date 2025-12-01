@@ -254,6 +254,50 @@ Toggle debug mode in the settings to get a deeper look at how the agent works th
 
 ---
 
+## Pause & Resume
+
+Execution can be **paused and resumed** if you accidentally navigate away or refresh the page during task execution.
+
+### How It Works
+
+When you disconnect during execution (refresh, close tab, navigate away):
+
+1. **Automatic Pause**: The system detects the disconnect and pauses execution
+2. **State Preserved**: The current task's progress is saved via LangGraph checkpointing
+3. **Status Updates**: Session moves to PAUSED status, task stays "in progress"
+
+When you return:
+
+1. **Visual Indicator**: The paused task shows a pause icon instead of a spinner
+2. **Continue Button**: The Execute button changes to "Continue (X tasks remaining)"
+3. **Resume Execution**: Click Continue to pick up exactly where you left off
+
+```
+[Executing] → [Page Refresh] → [Disconnect Detected]
+                                        ↓
+                               [Session → PAUSED]
+                               [Task stays in_progress]
+                                        ↓
+[Return to Page] → [See paused state] → [Click Continue]
+                                        ↓
+                               [Resume from checkpoint]
+                               [Session → EXECUTING]
+```
+
+### What Gets Preserved
+
+| Data | Preserved? | Notes |
+|------|------------|-------|
+| Completed tasks | Yes | Results and artifacts saved |
+| In-progress task | Yes | Resumes from LangGraph checkpoint |
+| Pending tasks | Yes | Will execute after in-progress completes |
+| Execution logs | Yes | Full history visible on reload |
+| Artifacts | Yes | All created artifacts retained |
+
+This feature ensures you never lose progress, even if you accidentally close your browser mid-execution.
+
+---
+
 ## State Persistence
 
 Every conversation and execution is automatically saved to the database using LangGraph's PostgreSQL checkpointer.
@@ -261,9 +305,18 @@ Every conversation and execution is automatically saved to the database using La
 ### What This Means?
 
 - **Sessions are resumable:** Close the browser and come back later - your conversation continues where you left off
-
+- **Execution is recoverable:** If you disconnect during execution, the session pauses and can be resumed with the Continue button (see [Pause & Resume](#pause--resume))
 - **History preserved:** All messages, tasks, and artifacts are stored permanently
 - **Sessions lock after execution:** Once all tasks are executed, the session moves to COMPLETED status and becomes read-only. This keeps the system simple and prevents accidental modifications to finished work. To work on a new goal, simply create a new session.
+
+### Session States
+
+| Status | Description |
+|--------|-------------|
+| **PLANNING** | Initial state - chatting with agent, refining tasks |
+| **EXECUTING** | Tasks are being processed by the execution agent |
+| **PAUSED** | Execution interrupted (user disconnected), can be resumed |
+| **COMPLETED** | All tasks finished, session is read-only |
 
 ### How State is Managed
 
@@ -301,6 +354,12 @@ Here's the complete journey from goal to results:
 │     └─→ Execution Agent processes tasks one by one              │
 │     └─→ Tools are called, results streamed in real-time         │
 │     └─→ Artifacts created for valuable findings                 │
+│                                                                 │
+│  4a. PAUSE (if user disconnects)                                │
+│      └─→ Session moves to PAUSED status                         │
+│      └─→ In-progress task state preserved                       │
+│      └─→ User returns → sees pause icon + Continue button       │
+│      └─→ Click Continue → resumes from step 4                   │
 │                                                                 │
 │  5. REVIEW RESULTS                                              │
 │     └─→ Session moves to COMPLETED status                       │

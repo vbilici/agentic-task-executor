@@ -18,7 +18,7 @@ from app.models.artifact import ArtifactCreate
 from app.models.base import ArtifactType
 from app.services.artifact_service import artifact_service
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn.error")
 
 
 class TaskResult(BaseModel):
@@ -176,30 +176,31 @@ def create_execution_graph() -> StateGraph:
         """Main agent node that decides what to do next."""
         messages = list(state["messages"])
 
-        # Check if this is the first message (no AI messages yet)
-        has_ai_message = any(isinstance(m, AIMessage) for m in messages)
+        # Get current task info for system message
+        current_task = None
+        for task in state["tasks"]:
+            if task.get("id") == state["current_task_id"]:
+                current_task = task
+                break
 
-        if not has_ai_message:
-            # Get current task info
-            current_task = None
-            for task in state["tasks"]:
-                if task.get("id") == state["current_task_id"]:
-                    current_task = task
-                    break
+        # Always build the system message with task context
+        # This must be prepended on EVERY iteration, not just the first,
+        # because the system message is not persisted in state
+        if current_task:
+            task_title = current_task.get("title", "Unknown task")
+            task_description = current_task.get("description", "No description")
 
-            if current_task:
-                # Add system message with task context
-                task_title = current_task.get("title", "Unknown task")
-                task_description = current_task.get("description", "No description")
+            prompt = EXECUTION_PROMPT.format(
+                task_title=task_title,
+                task_description=task_description or "No additional details",
+                session_id=state["session_id"],
+                task_id=state["current_task_id"],
+            )
+            system_msg = SystemMessage(content=prompt)
 
-                prompt = EXECUTION_PROMPT.format(
-                    task_title=task_title,
-                    task_description=task_description or "No additional details",
-                    session_id=state["session_id"],
-                    task_id=state["current_task_id"],
-                )
-                system_msg = SystemMessage(content=prompt)
-                messages = [system_msg, *messages]
+            # Remove any existing system messages to avoid duplicates
+            messages = [m for m in messages if not isinstance(m, SystemMessage)]
+            messages = [system_msg, *messages]
 
         # Get response from LLM
         response = llm_with_tools.invoke(messages)
@@ -242,6 +243,55 @@ def create_execution_graph() -> StateGraph:
                 "created_artifact": None,
                 "is_complete": True,
             }
+
+        # Check if an artifact was already created for this task via the create_artifact tool
+        # This prevents duplicate artifacts when the agent proactively creates one
+        if state["current_task_id"]:
+            try:
+                import asyncio
+
+                try:
+                    loop = asyncio.get_event_loop()
+                    if loop.is_running():
+                        import concurrent.futures
+
+                        with concurrent.futures.ThreadPoolExecutor() as executor:
+                            future = executor.submit(
+                                asyncio.run,
+                                artifact_service.list_by_task(
+                                    UUID(state["current_task_id"])
+                                ),
+                            )
+                            existing_artifacts = future.result()
+                    else:
+                        existing_artifacts = loop.run_until_complete(
+                            artifact_service.list_by_task(
+                                UUID(state["current_task_id"])
+                            )
+                        )
+                except RuntimeError:
+                    existing_artifacts = asyncio.run(
+                        artifact_service.list_by_task(UUID(state["current_task_id"]))
+                    )
+
+                if existing_artifacts:
+                    # Artifact already exists for this task, skip creation
+                    logger.info(
+                        f"Skipping artifact creation - artifact already exists for task {state['current_task_id']}"
+                    )
+                    # Return the existing artifact info
+                    existing = existing_artifacts[0]
+                    return {
+                        "task_result": task_result,
+                        "created_artifact": {
+                            "id": str(existing.id),
+                            "name": existing.name,
+                            "type": existing.type.value,
+                        },
+                        "is_complete": True,
+                    }
+            except Exception as e:
+                logger.warning(f"Failed to check for existing artifacts: {e}")
 
         # Create prompt for artifact decision
         prompt = ARTIFACT_CREATOR_PROMPT.format(

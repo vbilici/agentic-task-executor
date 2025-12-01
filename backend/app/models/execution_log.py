@@ -21,6 +21,7 @@ class ExecutionLogEventType(str, Enum):
     ARTIFACT_CREATED = "artifact_created"
     ERROR = "error"
     DONE = "done"
+    PAUSED = "paused"
 
 
 class ExecutionLogCreate(BaseDBModel):

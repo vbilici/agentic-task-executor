@@ -137,8 +137,27 @@ class TaskService:
         )
         return [Task(**row) for row in result.data]
 
+    async def get_resumable_tasks(self, session_id: UUID) -> list[Task]:
+        """Get tasks that need execution when resuming: in_progress first, then pending.
+
+        Used when resuming from a paused session. In-progress tasks were interrupted
+        mid-execution and will resume from their LangGraph checkpoint. Pending tasks
+        will start fresh.
+        """
+        result = (
+            self.client.table(self.table)
+            .select("*")
+            .eq("session_id", str(session_id))
+            .in_("status", [TaskStatus.IN_PROGRESS.value, TaskStatus.PENDING.value])
+            .order("order")
+            .execute()
+        )
+        return [Task(**row) for row in result.data]
+
     async def start_task(self, task_id: UUID) -> Task:
         """Start a task - changes status from pending to in_progress.
+
+        Also allows resuming a task that is already in_progress (from a paused session).
 
         Args:
             task_id: The task UUID to start
@@ -153,10 +172,15 @@ class TaskService:
         if not task:
             raise ValueError(f"Task {task_id} not found")
 
+        # Allow starting from pending, or resuming from in_progress (paused session)
+        if task.status == TaskStatus.IN_PROGRESS:
+            # Task is already in progress (resuming from pause), return as-is
+            return task
+
         if task.status != TaskStatus.PENDING:
             raise ValueError(
                 f"Cannot start task: current status is {task.status.value}, "
-                "expected 'pending'"
+                "expected 'pending' or 'in_progress'"
             )
 
         result = (

@@ -12,6 +12,7 @@ class SessionStatus(str, Enum):
 
     PLANNING = "planning"
     EXECUTING = "executing"
+    PAUSED = "paused"
     COMPLETED = "completed"
 
 

@@ -325,6 +325,13 @@ export function SessionPage() {
           // Trigger summarize after execution completes
           triggerSummarize();
           break;
+        case "paused":
+          setIsExecuting(false);
+          // Update session status to paused
+          setSession((prev) =>
+            prev ? { ...prev, status: "paused" } : prev
+          );
+          break;
         case "error":
           if (!event.taskId) {
             // Global error - stop execution
@@ -347,10 +354,11 @@ export function SessionPage() {
       // Start with chat messages
       let allMessages: ChatMessageItem[] = [...sessionData.messages];
 
-      // Load execution logs for executed sessions
+      // Load execution logs for executed or paused sessions
       if (
         sessionData.status === "completed" ||
-        sessionData.status === "executing"
+        sessionData.status === "executing" ||
+        sessionData.status === "paused"
       ) {
         try {
           const logsResponse = await api.getExecutionLogs(sessionId);
@@ -433,18 +441,26 @@ export function SessionPage() {
     setSelectedArtifactId(null);
   };
 
-  // Count pending tasks
+  // Count pending and in_progress tasks (resumable tasks)
   const pendingTaskCount = tasks.filter(
     (task) => task.status === "pending"
   ).length;
+  const resumableTaskCount = tasks.filter(
+    (task) => task.status === "pending" || task.status === "in_progress"
+  ).length;
 
-  // Determine if we can execute (has pending tasks and not already executing)
+  // Determine if we can execute (has tasks to run and not already executing)
+  // For paused sessions, we check resumableTaskCount (in_progress + pending)
+  // For planning sessions, we check pendingTaskCount
   const canExecute =
-    pendingTaskCount > 0 &&
+    (session?.status === "paused" ? resumableTaskCount > 0 : pendingTaskCount > 0) &&
     !isExecuting &&
     !isSending &&
     session?.status !== "executing" &&
     session?.status !== "completed";
+
+  // Is this a resume operation?
+  const isResume = session?.status === "paused";
 
   if (isLoading) {
     return (
@@ -531,10 +547,11 @@ export function SessionPage() {
         onSelectArtifact={handleSelectArtifact}
         canExecute={canExecute}
         isExecuting={isExecuting}
-        pendingTaskCount={pendingTaskCount}
+        pendingTaskCount={isResume ? resumableTaskCount : pendingTaskCount}
         onExecute={handleExecute}
         showExecuteButton={session?.status !== "completed"}
         isExtractingTasks={isExtractingTasks}
+        isResume={isResume}
       />
 
       {/* Mobile Tasks Sheet */}
@@ -552,9 +569,10 @@ export function SessionPage() {
             isExtractingTasks={isExtractingTasks}
             canExecute={canExecute}
             isExecuting={isExecuting}
-            pendingTaskCount={pendingTaskCount}
+            pendingTaskCount={isResume ? resumableTaskCount : pendingTaskCount}
             onExecute={handleExecute}
             showExecuteButton={session?.status !== "completed"}
+            isResume={isResume}
           />
         </SheetContent>
       </Sheet>

@@ -30,12 +30,14 @@ interface SessionListItemProps {
 const statusColors = {
   planning: "bg-yellow-100 text-yellow-800",
   executing: "bg-blue-100 text-blue-800",
+  paused: "bg-amber-100 text-amber-800",
   completed: "bg-green-100 text-green-800",
 };
 
 const statusDotColors = {
   planning: "bg-yellow-500",
   executing: "bg-blue-500",
+  paused: "bg-amber-500",
   completed: "bg-green-500",
 };
 

@@ -1,10 +1,12 @@
 """Execution API endpoint with SSE streaming."""
 
+import asyncio
 import json
+import logging
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 
 from app.agent.execution_graph import (
@@ -21,6 +23,7 @@ from app.services.task_service import task_service
 
 router = APIRouter(prefix="/sessions", tags=["Execution"])
 
+logger = logging.getLogger("uvicorn.error")
 
 # Event types that should NOT be persisted (streaming tokens)
 _SKIP_PERSIST_EVENTS = {"content"}
@@ -39,20 +42,19 @@ async def _persist_and_yield_event(
 
 
 @router.post("/{session_id}/execute")
-async def execute_tasks(session_id: UUID) -> StreamingResponse:
+async def execute_tasks(session_id: UUID, request: Request) -> StreamingResponse:
     """Execute all pending tasks for a session and stream progress via SSE.
 
-    This endpoint:
-    1. Fetches all pending tasks for the session
-    2. Executes each task sequentially using the execution agent
-    3. Streams real-time events for each task's progress
-    4. Updates task status in the database
+    This endpoint handles both fresh execution and resuming from paused state:
+    - From PLANNING: executes all pending tasks
+    - From PAUSED: resumes in_progress task (from checkpoint) + remaining pending tasks
 
     Events emitted:
     - task_selected: When a task is picked for execution
     - tool_call: When the agent calls a tool
     - tool_result: When a tool returns a result
     - task_completed: When a task finishes (done/failed)
+    - paused: When execution is paused due to client disconnect
     - error: When an error occurs
     - done: When all tasks are processed
     """
@@ -61,16 +63,30 @@ async def execute_tasks(session_id: UUID) -> StreamingResponse:
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    # Block execution on completed sessions
-    if session.status == SessionStatus.COMPLETED:
-        raise HTTPException(status_code=400, detail="Session is already completed")
-
-    # Get pending tasks
-    pending_tasks = await task_service.get_pending_tasks(session_id)
-    if not pending_tasks:
+    # Only allow execution from planning or paused states
+    if session.status not in [SessionStatus.PLANNING, SessionStatus.PAUSED]:
+        if session.status == SessionStatus.COMPLETED:
+            raise HTTPException(status_code=400, detail="Session is already completed")
         raise HTTPException(
             status_code=400,
-            detail="No pending tasks to execute",
+            detail=f"Cannot execute session in {session.status.value} state",
+        )
+
+    is_resuming = session.status == SessionStatus.PAUSED
+    logger.info(
+        f"[EXECUTE] Starting execution for session {session_id} (resuming={is_resuming})"
+    )
+
+    # Get tasks based on session state
+    if is_resuming:
+        tasks_to_execute = await task_service.get_resumable_tasks(session_id)
+    else:
+        tasks_to_execute = await task_service.get_pending_tasks(session_id)
+
+    if not tasks_to_execute:
+        raise HTTPException(
+            status_code=400,
+            detail="No tasks to execute",
         )
 
     # Update session status to executing
@@ -88,13 +104,27 @@ async def execute_tasks(session_id: UUID) -> StreamingResponse:
 
         completed_count = 0
         failed_count = 0
-        total_tasks = len(pending_tasks)
+        total_tasks = len(tasks_to_execute)
 
         # Track completed task results for context passing
         completed_task_results: list[dict] = []
 
         try:
-            for task in pending_tasks:
+            for task in tasks_to_execute:
+                # Check for client disconnect at start of each task
+                if await request.is_disconnected():
+                    logger.info(
+                        f"[EXECUTE] Client disconnected before task, pausing session {session_id}"
+                    )
+                    await session_service.update_status(
+                        session_id, SessionStatus.PAUSED
+                    )
+                    pause_event = {"type": "paused", "reason": "client_disconnected"}
+                    await execution_log_service.create_from_event(
+                        session_id, pause_event
+                    )
+                    return  # Exit the generator
+
                 task_id = str(task.id)
                 task_dict = {
                     "id": task_id,
@@ -133,6 +163,23 @@ async def execute_tasks(session_id: UUID) -> StreamingResponse:
                     async for event in execute_single_task(
                         graph, session_id, task_dict, config, completed_task_results
                     ):
+                        # Check for client disconnect before yielding
+                        if await request.is_disconnected():
+                            logger.info(
+                                f"[EXECUTE] Client disconnected, pausing session {session_id}"
+                            )
+                            await session_service.update_status(
+                                session_id, SessionStatus.PAUSED
+                            )
+                            pause_event = {
+                                "type": "paused",
+                                "reason": "client_disconnected",
+                            }
+                            await execution_log_service.create_from_event(
+                                session_id, pause_event
+                            )
+                            return  # Exit the generator
+
                         event_type = event.get("type")
 
                         # Track completion info
@@ -206,7 +253,26 @@ async def execute_tasks(session_id: UUID) -> StreamingResponse:
             }
             yield await _persist_and_yield_event(session_id, "done", event)
 
+        except asyncio.CancelledError:
+            # Client disconnected - pause execution
+            logger.info(
+                f"[EXECUTE] CancelledError caught, pausing session {session_id}"
+            )
+            await session_service.update_status(session_id, SessionStatus.PAUSED)
+            event = {"type": "paused", "reason": "client_disconnected"}
+            await execution_log_service.create_from_event(session_id, event)
+            raise  # Re-raise to properly close the generator
+
+        except GeneratorExit:
+            # Generator closed (client disconnected)
+            logger.info(f"[EXECUTE] GeneratorExit caught, pausing session {session_id}")
+            await session_service.update_status(session_id, SessionStatus.PAUSED)
+            event = {"type": "paused", "reason": "client_disconnected"}
+            await execution_log_service.create_from_event(session_id, event)
+            raise  # Re-raise to properly close the generator
+
         except Exception as e:
+            logger.error(f"[EXECUTE] Exception caught: {type(e).__name__}: {e}")
             event = {"type": "error", "error": str(e)}
             yield await _persist_and_yield_event(session_id, "error", event)
 

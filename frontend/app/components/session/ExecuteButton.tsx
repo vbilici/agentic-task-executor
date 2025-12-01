@@ -6,6 +6,7 @@ interface ExecuteButtonProps {
   disabled?: boolean;
   isExecuting?: boolean;
   pendingTaskCount?: number;
+  isResume?: boolean;
 }
 
 export function ExecuteButton({
@@ -13,8 +14,13 @@ export function ExecuteButton({
   disabled = false,
   isExecuting = false,
   pendingTaskCount = 0,
+  isResume = false,
 }: ExecuteButtonProps) {
   const isDisabled = disabled || isExecuting || pendingTaskCount === 0;
+
+  const buttonText = isResume
+    ? `Continue (${pendingTaskCount} task${pendingTaskCount !== 1 ? "s" : ""} remaining)`
+    : `Execute${pendingTaskCount > 0 ? ` (${pendingTaskCount} tasks)` : ""}`;
 
   return (
     <Button
@@ -26,12 +32,12 @@ export function ExecuteButton({
       {isExecuting ? (
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          Executing...
+          {isResume ? "Resuming..." : "Executing..."}
         </>
       ) : (
         <>
           <Play className="mr-2 h-4 w-4" />
-          Execute {pendingTaskCount > 0 ? `(${pendingTaskCount} tasks)` : ""}
+          {buttonText}
         </>
       )}
     </Button>

@@ -14,11 +14,13 @@ import {
   CheckCircle2,
   Circle,
   Loader2,
+  Pause,
   XCircle,
 } from "lucide-react";
 
 interface TaskItemProps {
   task: Task;
+  isPaused?: boolean;
 }
 
 interface StatusConfig {
@@ -62,10 +64,13 @@ const statusConfig: Record<TaskStatus, StatusConfig> = {
   },
 };
 
-export function TaskItem({ task }: TaskItemProps) {
+export function TaskItem({ task, isPaused = false }: TaskItemProps) {
   const [open, setOpen] = useState(false);
   const config = statusConfig[task.status];
-  const Icon = config.icon;
+
+  // Show pause icon instead of spinner when session is paused and task is in_progress
+  const showPausedState = isPaused && task.status === "in_progress";
+  const Icon = showPausedState ? Pause : config.icon;
 
   const showResult = task.status === "done" && task.result;
   const showError = task.status === "failed" && task.result;
@@ -83,8 +88,8 @@ export function TaskItem({ task }: TaskItemProps) {
           <Icon
             className={cn(
               "h-5 w-5 mt-0.5 flex-shrink-0",
-              config.iconColor,
-              task.status === "in_progress" && "animate-spin"
+              showPausedState ? "text-amber-500" : config.iconColor,
+              task.status === "in_progress" && !showPausedState && "animate-spin"
             )}
           />
           <div className="flex-1 min-w-0">
@@ -105,8 +110,8 @@ export function TaskItem({ task }: TaskItemProps) {
               <Icon
                 className={cn(
                   "h-5 w-5 flex-shrink-0",
-                  config.iconColor,
-                  task.status === "in_progress" && "animate-spin"
+                  showPausedState ? "text-amber-500" : config.iconColor,
+                  task.status === "in_progress" && !showPausedState && "animate-spin"
                 )}
               />
               <span className="text-muted-foreground font-normal">#{task.order + 1}</span>
