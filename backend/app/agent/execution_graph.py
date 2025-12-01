@@ -30,6 +30,14 @@ class TaskResult(BaseModel):
     )
 
 
+class FinalReflection(BaseModel):
+    """Structured output for final reflection after artifact creation."""
+
+    reflection: str = Field(
+        description="Brief reflection on task completion and artifact value"
+    )
+
+
 class ArtifactDecision(BaseModel):
     """Structured output for artifact creation decision."""
 
@@ -107,6 +115,16 @@ Review what was accomplished and provide:
 Be concise but informative."""
 
 
+FINAL_REFLECTION_PROMPT = """Based on the completed task execution, provide a final reflection.
+
+Task: {task_title}
+Result: {task_result}
+Artifact Created: {artifact_info}
+
+Provide a brief reflection on how well the task was completed and the value of any artifacts created.
+Be concise - 1-2 sentences maximum."""
+
+
 ARTIFACT_CREATOR_PROMPT = """You are an artifact creator. Review the task execution and decide if the results should be saved as an artifact for the user.
 
 Task: {task_title}
@@ -169,6 +187,14 @@ def create_execution_graph() -> StateGraph:
         streaming=False,
     ).with_structured_output(ArtifactDecision)
 
+    # Create LLM for final reflection
+    final_reflection_llm = ChatOpenAI(
+        model="gpt-4o",
+        api_key=settings.openai_api_key,
+        max_tokens=512,
+        streaming=False,
+    ).with_structured_output(FinalReflection)
+
     # Create tool node
     tool_node = ToolNode(ALL_TOOLS)
 
@@ -207,7 +233,7 @@ def create_execution_graph() -> StateGraph:
         return {"messages": [response]}
 
     def reflection_node(state: ExecutionState) -> dict[str, Any]:
-        """Generate structured reflection on task completion."""
+        """Generate final reflection including artifact outcome."""
         # Get current task info
         current_task = None
         for task in state["tasks"]:
@@ -221,46 +247,74 @@ def create_execution_graph() -> StateGraph:
             else "Unknown task"
         )
 
-        # Get the conversation for context
-        messages = list(state["messages"])
+        # Get task result and artifact info from state (set by artifact_creator)
+        task_result = state.get("task_result", "")
+        created_artifact = state.get("created_artifact")
 
-        # Create reflection prompt
-        prompt = REFLECTION_PROMPT.format(task_title=task_title)
+        # Format artifact info
+        artifact_info = "No artifact created"
+        if created_artifact:
+            artifact_info = (
+                f"Created: {created_artifact.get('name')} "
+                f"({created_artifact.get('type')})"
+            )
+
+        # Create final reflection prompt
+        prompt = FINAL_REFLECTION_PROMPT.format(
+            task_title=task_title,
+            task_result=task_result,
+            artifact_info=artifact_info,
+        )
         reflection_messages = [
             SystemMessage(content=prompt),
+            HumanMessage(content="Generate a brief final reflection."),
+        ]
+
+        # Get structured output
+        result: FinalReflection = final_reflection_llm.invoke(reflection_messages)
+
+        return {
+            "final_reflection": result.reflection,
+            "is_complete": True,
+        }
+
+    def artifact_creator_node(state: ExecutionState) -> dict[str, Any]:
+        """Generate task result and decide whether to create an artifact."""
+        # Get current task info
+        current_task = None
+        for task in state["tasks"]:
+            if task.get("id") == state["current_task_id"]:
+                current_task = task
+                break
+
+        task_title = (
+            current_task.get("title", "Unknown task")
+            if current_task
+            else "Unknown task"
+        )
+
+        # First, generate task result from conversation (moved from reflect node)
+        messages = list(state["messages"])
+        result_prompt = REFLECTION_PROMPT.format(task_title=task_title)
+        result_messages = [
+            SystemMessage(content=result_prompt),
             HumanMessage(
                 content=f"Here is the execution history:\n\n{_format_messages(messages)}"
             ),
         ]
 
-        # Get structured output
-        result: TaskResult = reflection_llm.invoke(reflection_messages)
+        # Get structured task result
+        task_result_obj: TaskResult = reflection_llm.invoke(result_messages)
+        task_result = task_result_obj.result
+        task_reflection = task_result_obj.reflection
 
-        return {
-            "task_result": result.result,
-            "task_reflection": result.reflection,
-            "is_complete": True,
-        }
-
-    def artifact_creator_node(state: ExecutionState) -> dict[str, Any]:
-        """Decide whether to create an artifact from the task result."""
-        # Get current task info
-        current_task = None
-        for task in state["tasks"]:
-            if task.get("id") == state["current_task_id"]:
-                current_task = task
-                break
-
-        task_title = (
-            current_task.get("title", "Unknown task")
-            if current_task
-            else "Unknown task"
-        )
-        task_result = state.get("task_result", "")
-
-        # Skip if no meaningful result
+        # Skip artifact creation if no meaningful result
         if not task_result or task_result.strip() == "":
-            return {"created_artifact": None}
+            return {
+                "task_result": task_result,
+                "task_reflection": task_reflection,
+                "created_artifact": None,
+            }
 
         # Create prompt for artifact decision
         prompt = ARTIFACT_CREATOR_PROMPT.format(
@@ -312,21 +366,31 @@ def create_execution_graph() -> StateGraph:
                     artifact = asyncio.run(artifact_service.create(artifact_data))
 
                 return {
+                    "task_result": task_result,
+                    "task_reflection": task_reflection,
                     "created_artifact": {
                         "id": str(artifact.id),
                         "name": artifact.name,
                         "type": artifact.type.value,
-                    }
+                    },
                 }
             except Exception as e:
                 # Log the error and continue without artifact
                 logger.error(f"Failed to create artifact: {e}", exc_info=True)
-                return {"created_artifact": None}
+                return {
+                    "task_result": task_result,
+                    "task_reflection": task_reflection,
+                    "created_artifact": None,
+                }
 
-        return {"created_artifact": None}
+        return {
+            "task_result": task_result,
+            "task_reflection": task_reflection,
+            "created_artifact": None,
+        }
 
-    def should_continue(state: ExecutionState) -> Literal["tools", "reflect"]:
-        """Determine if agent should use tools or reflect on completion."""
+    def should_continue(state: ExecutionState) -> Literal["tools", "artifact_creator"]:
+        """Determine if agent should use tools or proceed to artifact creation."""
         messages = state["messages"]
         last_message = messages[-1] if messages else None
 
@@ -334,8 +398,8 @@ def create_execution_graph() -> StateGraph:
         if isinstance(last_message, AIMessage) and last_message.tool_calls:
             return "tools"
 
-        # Otherwise, agent is done - time to reflect
-        return "reflect"
+        # Otherwise, agent is done - proceed to artifact creator
+        return "artifact_creator"
 
     # Build the graph
     builder: StateGraph = StateGraph(ExecutionState)
@@ -355,18 +419,18 @@ def create_execution_graph() -> StateGraph:
         should_continue,
         {
             "tools": "tools",
-            "reflect": "reflect",
+            "artifact_creator": "artifact_creator",
         },
     )
 
     # Tools always go back to agent
     builder.add_edge("tools", "agent")
 
-    # Reflect goes to artifact creator
-    builder.add_edge("reflect", "artifact_creator")
+    # Artifact creator goes to reflect
+    builder.add_edge("artifact_creator", "reflect")
 
-    # Artifact creator ends the graph
-    builder.add_edge("artifact_creator", END)
+    # Reflect ends the graph
+    builder.add_edge("reflect", END)
 
     return builder
 
@@ -455,11 +519,14 @@ Please complete this task using the available tools and the context from previou
         "task_result": None,
         "task_reflection": None,
         "created_artifact": None,
+        "final_reflection": None,
         "is_complete": False,
     }
 
     # Track emitted events to prevent duplicates
     artifact_analysis_started = False
+    # Store task result from artifact_creator for emission after reflect completes
+    task_result_from_artifact: str = ""
 
     try:
         # Stream events from the graph
@@ -509,28 +576,6 @@ Please complete this task using the available tools and the context from previou
                     "output": output_str,
                 }
 
-            elif event_type == "on_chain_end" and node_name == "reflect":
-                # Reflection complete - extract result
-                output = event.get("data", {}).get("output", {})
-                if isinstance(output, dict):
-                    result = output.get("task_result", "")
-                    reflection = output.get("task_reflection", "")
-
-                    if result:
-                        yield {
-                            "type": "task_completed",
-                            "taskId": task_id,
-                            "status": "done",
-                            "result": result,
-                        }
-
-                    if reflection:
-                        yield {
-                            "type": "reflection",
-                            "taskId": task_id,
-                            "text": reflection,
-                        }
-
             elif event_type == "on_chain_start" and node_name == "artifact_creator":
                 # Artifact creator starting - emit event for UI (only once)
                 if not artifact_analysis_started:
@@ -541,9 +586,12 @@ Please complete this task using the available tools and the context from previou
                     }
 
             elif event_type == "on_chain_end" and node_name == "artifact_creator":
-                # Artifact creator complete - check if artifact was created
+                # Artifact creator complete - emit artifact events only
                 output = event.get("data", {}).get("output", {})
                 if isinstance(output, dict):
+                    # Store task_result for later emission after reflect
+                    task_result_from_artifact = output.get("task_result", "")
+
                     created_artifact = output.get("created_artifact")
                     if created_artifact:
                         yield {
@@ -559,6 +607,28 @@ Please complete this task using the available tools and the context from previou
                             "type": "artifact_analysis_complete",
                             "taskId": task_id,
                             "created": False,
+                        }
+
+            elif event_type == "on_chain_end" and node_name == "reflect":
+                # Reflect complete - emit reflection and task_completed (LAST)
+                output = event.get("data", {}).get("output", {})
+                if isinstance(output, dict):
+                    final_reflection = output.get("final_reflection", "")
+
+                    if final_reflection:
+                        yield {
+                            "type": "reflection",
+                            "taskId": task_id,
+                            "text": final_reflection,
+                        }
+
+                    # task_completed fires LAST, after reflection
+                    if task_result_from_artifact:
+                        yield {
+                            "type": "task_completed",
+                            "taskId": task_id,
+                            "status": "done",
+                            "result": task_result_from_artifact,
                         }
 
     except Exception as e:

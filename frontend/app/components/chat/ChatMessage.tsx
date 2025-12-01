@@ -9,6 +9,9 @@ import {
   MessageSquare,
   AlertCircle,
   Zap,
+  FileSearch,
+  FileX,
+  FileCheck,
 } from "lucide-react";
 
 type ExecutionEventWithTitle = ExecutionEvent & { taskTitle?: string };
@@ -89,6 +92,30 @@ function ExecutionEventMessage({ event, compact = false }: { event: ExecutionEve
           iconColor: "text-green-600",
           label: "Execution complete",
           content: `${event.summary?.completed}/${event.summary?.total} tasks completed${event.summary?.failed ? `, ${event.summary.failed} failed` : ""}`,
+        };
+      case "artifact_analysis_start":
+        return {
+          icon: FileSearch,
+          bgColor: "bg-purple-50 dark:bg-purple-950",
+          iconColor: "text-purple-600",
+          label: "Analyzing for artifacts",
+          content: "Checking if task result should be saved...",
+        };
+      case "artifact_analysis_complete":
+        return {
+          icon: FileX,
+          bgColor: "bg-gray-50 dark:bg-gray-900",
+          iconColor: "text-gray-600",
+          label: "No artifact needed",
+          content: "Task result doesn't require an artifact",
+        };
+      case "artifact_created":
+        return {
+          icon: FileCheck,
+          bgColor: "bg-purple-50 dark:bg-purple-950",
+          iconColor: "text-purple-600",
+          label: "Artifact created",
+          content: `${event.name} (${event.artifactType})`,
         };
       default:
         return {
