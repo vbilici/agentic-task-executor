@@ -1,14 +1,8 @@
 import { useState } from "react";
-import { MoreVertical, Trash2, MessageSquare } from "lucide-react";
+import { Trash2, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Session } from "@/types/api";
 import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -148,26 +142,16 @@ export function SessionListItem({
           {session.status}
         </Badge>
       </div>
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-background"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <MoreVertical className="h-4 w-4" />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem
-            className="text-destructive"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowDeleteConfirm(true);
-            }}
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
-            Delete
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <button
+        className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+        onClick={(e) => {
+          e.stopPropagation();
+          setShowDeleteConfirm(true);
+        }}
+        aria-label="Delete session"
+      >
+        <Trash2 className="h-4 w-4" />
+      </button>
     </div>
 
     <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
