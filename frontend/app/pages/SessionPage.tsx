@@ -14,6 +14,8 @@ import type {
 } from "@/types/api";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { ChatMessageList, type ChatMessageItem } from "@/components/chat/ChatMessageList";
+import { SuggestionChips } from "@/components/chat/SuggestionChips";
+import { getRandomSuggestions } from "@/data/suggestions";
 import { LoadingIndicator } from "@/components/ui/LoadingIndicator";
 import { RightSidebar } from "@/components/layout/RightSidebar";
 import { TasksPanelContent } from "@/components/layout/TasksPanelContent";
@@ -61,6 +63,9 @@ export function SessionPage() {
 
   // Artifact modal state
   const [selectedArtifactId, setSelectedArtifactId] = useState<string | null>(null);
+
+  // Suggestions for pristine state (computed once on mount)
+  const [suggestions] = useState(() => getRandomSuggestions(4));
 
   // Sync mobile nav context with task/artifact counts
   useEffect(() => {
@@ -387,12 +392,23 @@ export function SessionPage() {
 
         {/* Pristine mode: center the input when no messages */}
         {messages.length === 0 && !streamingContent ? (
-          <div className="flex-1 flex items-center justify-center p-4">
+          <div className="flex-1 flex flex-col items-center justify-center p-4 gap-4">
+            <div className="text-center mb-2">
+              <h2 className="text-2xl font-semibold mb-2">What can I help you with?</h2>
+              <p className="text-muted-foreground">
+                Describe your goal or choose a suggestion below
+              </p>
+            </div>
             <ChatInput
               onSend={handleSendMessage}
               disabled={isSending || isExecuting || isSummarizing || session?.status === "completed"}
               placeholder="Describe your goal..."
               className="w-full max-w-2xl border-t-0 rounded-lg border border-border"
+            />
+            <SuggestionChips
+              suggestions={suggestions}
+              onSelect={handleSendMessage}
+              disabled={isSending || isExecuting || isSummarizing || session?.status === "completed"}
             />
           </div>
         ) : (
