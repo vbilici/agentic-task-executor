@@ -49,11 +49,11 @@ class TestShouldContinue:
         assert bool(has_tool_calls) is True
         # This means should_continue would return "tools"
 
-    def test_should_continue_returns_reflect_when_no_tool_calls(self):
-        """Routes to 'reflect' when AIMessage has no tool_calls (T032).
+    def test_should_continue_returns_artifact_creator_when_no_tool_calls(self):
+        """Routes to 'artifact_creator' when AIMessage has no tool_calls (T032).
 
         When the agent produces a final response without tool_calls,
-        the graph should route to 'reflect' for task completion summary.
+        the graph should route to 'artifact_creator' for reflection and artifact creation.
         """
         from app.agent.state import ExecutionState
 
@@ -78,10 +78,10 @@ class TestShouldContinue:
 
         # Use bool() to check truthiness, not identity
         assert bool(has_tool_calls) is False
-        # This means should_continue would return "reflect"
+        # This means should_continue would return "artifact_creator"
 
-    def test_should_continue_with_empty_tool_calls_returns_reflect(self):
-        """Routes to 'reflect' when tool_calls is empty list.
+    def test_should_continue_with_empty_tool_calls_returns_artifact_creator(self):
+        """Routes to 'artifact_creator' when tool_calls is empty list.
 
         Edge case: AIMessage with empty tool_calls list should
         be treated as no tool calls.
@@ -110,11 +110,11 @@ class TestShouldContinue:
         # Use bool() to check truthiness, not identity
         assert bool(has_tool_calls) is False
 
-    def test_should_continue_with_human_message_returns_reflect(self):
-        """Routes to 'reflect' when last message is not AIMessage.
+    def test_should_continue_with_human_message_returns_artifact_creator(self):
+        """Routes to 'artifact_creator' when last message is not AIMessage.
 
         Edge case: If somehow the last message is a HumanMessage,
-        should route to reflect (not tools).
+        should route to artifact_creator (not tools).
         """
         from app.agent.state import ExecutionState
 
@@ -137,16 +137,22 @@ class TestShouldContinue:
         assert bool(has_tool_calls) is False
 
 
-class TestReflectionNode:
-    """Test reflection node structured output extraction (T033-T034)."""
+class TestArtifactCreatorReflection:
+    """Test artifact creator node reflection functionality (T033-T034).
 
-    def test_reflection_node_extracts_task_result(self):
-        """Reflection node extracts TaskResult from conversation (T034).
+    Note: The reflection logic has been merged into the artifact_creator_node.
+    These tests verify that the node properly extracts task results before
+    deciding on artifact creation.
+    """
 
-        The reflection node should use structured output to extract
-        a result summary and reflection from the conversation history.
+    def test_artifact_creator_extracts_task_result(self):
+        """Artifact creator extracts TaskResult from conversation (T034).
+
+        The artifact_creator_node should use structured output to extract
+        a result summary from the conversation history before deciding
+        on artifact creation.
         """
-        from app.agent.execution_graph import TaskResult, create_execution_graph
+        from app.agent.execution_graph import TaskResult, ArtifactDecision, create_execution_graph
         from app.agent.state import ExecutionState
 
         mock_task_result = TaskResult(
@@ -154,20 +160,36 @@ class TestReflectionNode:
             reflection="Task completed successfully with good results"
         )
 
+        mock_artifact_decision = ArtifactDecision(
+            should_create=False,
+            name=None,
+            artifact_type=None,
+            content=None
+        )
+
         with patch("app.agent.execution_graph.get_settings") as mock_settings:
             mock_settings.return_value = MagicMock(openai_api_key="test-key")
 
             with patch("app.agent.execution_graph.ChatOpenAI") as mock_llm_class:
+                # Create mock LLM that returns different things for different structured outputs
                 mock_llm = MagicMock()
+
+                # First call: reflection LLM (TaskResult)
                 mock_reflection_llm = MagicMock()
                 mock_reflection_llm.invoke.return_value = mock_task_result
-                mock_llm.with_structured_output.return_value = mock_reflection_llm
+
+                # Second call: artifact LLM (ArtifactDecision)
+                mock_artifact_llm = MagicMock()
+                mock_artifact_llm.invoke.return_value = mock_artifact_decision
+
+                # with_structured_output returns different mocks based on call order
+                mock_llm.with_structured_output.side_effect = [mock_reflection_llm, mock_artifact_llm]
                 mock_llm_class.return_value = mock_llm
 
                 graph_builder = create_execution_graph()
                 # Access the node's runnable via .runnable attribute
-                reflect_node_spec = graph_builder.nodes["reflect"]
-                reflect_node_runnable = reflect_node_spec.runnable
+                artifact_node_spec = graph_builder.nodes["artifact_creator"]
+                artifact_node_runnable = artifact_node_spec.runnable
 
                 state: ExecutionState = {
                     "messages": [
@@ -185,24 +207,30 @@ class TestReflectionNode:
                 }
 
                 # RunnableCallable uses .invoke() method
-                result = reflect_node_runnable.invoke(state)
+                result = artifact_node_runnable.invoke(state)
 
                 assert result["task_result"] == "Found 5 matching restaurants in the area"
-                assert result["task_reflection"] == "Task completed successfully with good results"
                 assert result["is_complete"] is True
 
-    def test_reflection_node_handles_missing_task(self):
-        """Reflection node handles case when task is not found.
+    def test_artifact_creator_handles_missing_task(self):
+        """Artifact creator handles case when task is not found.
 
         Edge case: If current_task_id doesn't match any task,
-        should still produce a reflection with 'Unknown task'.
+        should still produce a result with 'Unknown task' context.
         """
-        from app.agent.execution_graph import TaskResult, create_execution_graph
+        from app.agent.execution_graph import TaskResult, ArtifactDecision, create_execution_graph
         from app.agent.state import ExecutionState
 
         mock_task_result = TaskResult(
             result="Completed unknown task",
             reflection="Task context was unclear"
+        )
+
+        mock_artifact_decision = ArtifactDecision(
+            should_create=False,
+            name=None,
+            artifact_type=None,
+            content=None
         )
 
         with patch("app.agent.execution_graph.get_settings") as mock_settings:
@@ -212,13 +240,15 @@ class TestReflectionNode:
                 mock_llm = MagicMock()
                 mock_reflection_llm = MagicMock()
                 mock_reflection_llm.invoke.return_value = mock_task_result
-                mock_llm.with_structured_output.return_value = mock_reflection_llm
+                mock_artifact_llm = MagicMock()
+                mock_artifact_llm.invoke.return_value = mock_artifact_decision
+                mock_llm.with_structured_output.side_effect = [mock_reflection_llm, mock_artifact_llm]
                 mock_llm_class.return_value = mock_llm
 
                 graph_builder = create_execution_graph()
                 # Access the node's runnable via .runnable attribute
-                reflect_node_spec = graph_builder.nodes["reflect"]
-                reflect_node_runnable = reflect_node_spec.runnable
+                artifact_node_spec = graph_builder.nodes["artifact_creator"]
+                artifact_node_runnable = artifact_node_spec.runnable
 
                 state: ExecutionState = {
                     "messages": [AIMessage(content="Done")],
@@ -233,7 +263,7 @@ class TestReflectionNode:
                 }
 
                 # RunnableCallable uses .invoke() method
-                result = reflect_node_runnable.invoke(state)
+                result = artifact_node_runnable.invoke(state)
 
                 # Should still complete
                 assert result["is_complete"] is True
@@ -431,11 +461,12 @@ class TestExecutionGraphStructure:
             with patch("app.agent.execution_graph.ChatOpenAI"):
                 graph_builder = create_execution_graph()
 
-                # Check all required nodes exist
+                # Check all required nodes exist (reflect was merged into artifact_creator)
                 assert "agent" in graph_builder.nodes
                 assert "tools" in graph_builder.nodes
-                assert "reflect" in graph_builder.nodes
                 assert "artifact_creator" in graph_builder.nodes
+                # reflect node no longer exists - functionality merged into artifact_creator
+                assert "reflect" not in graph_builder.nodes
 
     def test_graph_entry_point_is_agent(self):
         """Graph entry point is the agent node."""
@@ -472,8 +503,13 @@ class TestExecutionGraphStructure:
                 )
                 assert tools_edge_found, "No edge from tools to agent found"
 
-    def test_graph_has_reflect_to_artifact_creator_edge(self):
-        """Graph has edge from reflect to artifact_creator."""
+    def test_graph_compiles_successfully(self):
+        """Graph can be compiled successfully, validating all edges.
+
+        Note: The reflect node was removed. Now agent routes directly
+        to artifact_creator via conditional edge when no tool calls.
+        Compilation validates that all edges (including conditional) are valid.
+        """
         from app.agent.execution_graph import create_execution_graph
 
         with patch("app.agent.execution_graph.get_settings") as mock_settings:
@@ -482,12 +518,14 @@ class TestExecutionGraphStructure:
             with patch("app.agent.execution_graph.ChatOpenAI"):
                 graph_builder = create_execution_graph()
 
-                # Check reflect -> artifact_creator edge exists
-                reflect_edge_found = any(
-                    edge[0] == "reflect" and edge[1] == "artifact_creator"
-                    for edge in graph_builder._all_edges
-                )
-                assert reflect_edge_found, "No edge from reflect to artifact_creator found"
+                # Compilation validates all edges are properly configured
+                compiled_graph = graph_builder.compile()
+                assert compiled_graph is not None
+
+                # Verify the three expected nodes are in the compiled graph
+                assert "agent" in graph_builder.nodes
+                assert "tools" in graph_builder.nodes
+                assert "artifact_creator" in graph_builder.nodes
 
     def test_graph_has_end_edge(self):
         """Graph has edge from artifact_creator to END."""
