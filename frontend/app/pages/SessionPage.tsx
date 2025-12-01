@@ -149,7 +149,7 @@ export function SessionPage() {
     onMessage: useCallback((event: ChatEvent | ExecutionEvent) => {
       switch (event.type) {
         case "content":
-          setStreamingContent((prev) => prev + (event as ChatEvent).content);
+          setStreamingContent((prev) => prev + (event as { type: "content"; content: string }).content);
           break;
         case "artifact_created": {
           // Add new artifact to the list
@@ -179,7 +179,7 @@ export function SessionPage() {
           break;
         }
         case "error":
-          console.error("Summarize error:", (event as ChatEvent).error);
+          console.error("Summarize error:", (event as { type: "error"; error: string }).error);
           setStreamingContent("");
           setIsSummarizing(false);
           break;

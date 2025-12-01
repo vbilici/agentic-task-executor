@@ -110,14 +110,6 @@ function getEventConfig(event: ExecutionEvent): EventConfig {
         textColor: "text-purple-700 dark:text-purple-300",
         label: "Artifact Created",
       };
-    case "data_modified":
-      return {
-        icon: ArrowRight,
-        bgColor: "bg-indigo-50 dark:bg-indigo-950",
-        borderColor: "border-indigo-200 dark:border-indigo-800",
-        textColor: "text-indigo-700 dark:text-indigo-300",
-        label: "Data Modified",
-      };
     case "summary_creating":
       return {
         icon: FileText,
@@ -222,17 +214,6 @@ function renderEventContent(
         <p className="text-sm">
           Created artifact: <span className="font-medium">{event.name}</span> (
           {event.artifactType})
-        </p>
-      );
-    case "data_modified":
-      return (
-        <p className="text-sm">
-          {event.operation === "create"
-            ? "Created"
-            : event.operation === "update"
-              ? "Updated"
-              : "Deleted"}{" "}
-          {event.itemType}
         </p>
       );
     case "summary_creating":

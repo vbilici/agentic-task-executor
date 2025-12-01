@@ -21,5 +21,6 @@
       "@/*": ["./app/*"]
     }
   },
-  "include": ["app"]
+  "include": ["app"],
+  "exclude": ["app/**/*.test.ts", "app/**/*.test.tsx", "app/test"]
 }
