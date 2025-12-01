@@ -67,6 +67,18 @@ export function SessionPage() {
   // Artifact modal state
   const [selectedArtifactId, setSelectedArtifactId] = useState<string | null>(null);
 
+  // Ref for chat input to auto-focus after response
+  const chatInputRef = useRef<HTMLInputElement>(null);
+  const [shouldFocusInput, setShouldFocusInput] = useState(false);
+
+  // Effect to focus input after state updates complete
+  useEffect(() => {
+    if (shouldFocusInput && !isSending && !isSummarizing) {
+      chatInputRef.current?.focus();
+      setShouldFocusInput(false);
+    }
+  }, [shouldFocusInput, isSending, isSummarizing]);
+
   // Suggestions for pristine state (regenerated when session changes)
   // eslint-disable-next-line react-hooks/exhaustive-deps -- sessionId triggers regeneration intentionally
   const suggestions = useMemo(() => getRandomSuggestions(4), [sessionId]);
@@ -178,6 +190,8 @@ export function SessionPage() {
           setIsExtractingTasks(false);
           // Refresh session title (may have been updated on first message)
           refreshSessionTitleRef.current();
+          // Auto-focus chat input after response completes
+          setShouldFocusInput(true);
           break;
         }
         case "error":
@@ -230,6 +244,8 @@ export function SessionPage() {
           }
           setStreamingContent("");
           setIsSummarizing(false);
+          // Auto-focus chat input after summarization completes
+          setShouldFocusInput(true);
           break;
         }
         case "error":
@@ -494,6 +510,7 @@ export function SessionPage() {
               </p>
             </div>
             <ChatInput
+              ref={chatInputRef}
               onSend={handleSendMessage}
               disabled={isSending || isExecuting || isSummarizing || session?.status === "completed"}
               placeholder="Describe your goal..."
@@ -523,6 +540,7 @@ export function SessionPage() {
             {/* Input - fixed at bottom */}
             <div className="absolute bottom-0 left-0 right-0">
               <ChatInput
+                ref={chatInputRef}
                 onSend={handleSendMessage}
                 disabled={isSending || isExecuting || isSummarizing || session?.status === "completed"}
                 placeholder={
