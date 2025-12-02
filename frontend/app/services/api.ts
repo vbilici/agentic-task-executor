@@ -138,6 +138,19 @@ class ApiClient {
     );
   }
 
+  // Claim execution (pauses stale execution on page load)
+  async claimExecution(
+    sessionId: string
+  ): Promise<{ claimed: boolean; status: string; connection_id: string | null }> {
+    return this.request<{
+      claimed: boolean;
+      status: string;
+      connection_id: string | null;
+    }>(`/sessions/${sessionId}/claim-execution`, {
+      method: "POST",
+    });
+  }
+
   // SSE Endpoints (return URL for EventSource)
   getChatSSEUrl(sessionId: string): string {
     return `${this.baseUrl}/sessions/${sessionId}/chat`;

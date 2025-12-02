@@ -448,7 +448,23 @@ export function SessionPage() {
     if (!sessionId) return;
 
     try {
-      const sessionData = await api.getSession(sessionId);
+      let sessionData = await api.getSession(sessionId);
+
+      // If session is executing, claim it to pause stale execution
+      // This handles the case where user refreshes the page during execution
+      if (sessionData.status === "executing") {
+        try {
+          const claimResult = await api.claimExecution(sessionId);
+          if (claimResult.claimed) {
+            // Update local session data with new paused status
+            sessionData = { ...sessionData, status: claimResult.status as SessionDetail["status"] };
+          }
+        } catch (claimError) {
+          console.error("Failed to claim execution:", claimError);
+          // Continue loading - the session will still show executing status
+        }
+      }
+
       setSession(sessionData);
       setTasks(sessionData.tasks);
       setArtifacts(sessionData.artifacts);

@@ -109,7 +109,6 @@ async def execute_tasks(session_id: UUID, request: Request) -> StreamingResponse
 
     # Register this execution connection - invalidates any previous connection
     connection_id = await execution_connection_service.register_connection(session_id)
-    print(f"[EXECUTE] Registered connection {connection_id} for session {session_id}")
 
     async def event_stream():
         """Generate SSE events from task execution."""
@@ -139,11 +138,7 @@ async def execute_tasks(session_id: UUID, request: Request) -> StreamingResponse
                 is_active = await execution_connection_service.is_connection_active(
                     session_id, connection_id, timeout_seconds=15
                 )
-                print(f"[EXECUTE] Connection check before task: is_active={is_active}")
                 if not is_active:
-                    print(
-                        f"[EXECUTE] Connection inactive before task, pausing session {session_id}"
-                    )
                     await session_service.update_status(
                         session_id, SessionStatus.PAUSED
                     )
@@ -333,6 +328,45 @@ def _sse_event(event_type: str, data: dict) -> str:
     return f"event: {event_type}\ndata: {json.dumps(data)}\n\n"
 
 
+class ClaimResponse(BaseModel):
+    """Response for claiming an execution."""
+
+    claimed: bool
+    status: str
+    connection_id: str | None
+
+
+@router.post("/{session_id}/claim-execution")
+async def claim_execution(session_id: UUID) -> ClaimResponse:
+    """Claim an executing session, pausing any stale execution.
+
+    Called by frontend when loading a session that's in "executing" status.
+    This immediately supersedes any previous connection and pauses the session,
+    so the user sees "paused" status and can click Continue.
+    """
+    session = await session_service.get(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    if session.status != SessionStatus.EXECUTING:
+        # Not executing, nothing to claim
+        return ClaimResponse(
+            claimed=False, status=session.status.value, connection_id=None
+        )
+
+    # Register new connection (supersedes old one)
+    new_connection_id = await execution_connection_service.register_connection(
+        session_id
+    )
+
+    # Immediately pause - the old execution will detect this on its next check
+    await session_service.update_status(session_id, SessionStatus.PAUSED)
+
+    return ClaimResponse(
+        claimed=True, status="paused", connection_id=str(new_connection_id)
+    )
+
+
 @router.post("/{session_id}/execution-heartbeat")
 async def execution_heartbeat(
     session_id: UUID, body: HeartbeatRequest
@@ -346,13 +380,9 @@ async def execution_heartbeat(
     If the connection_id no longer matches (superseded by new execution),
     returns active=False so the old tab knows to stop sending heartbeats.
     """
-    print(
-        f"[HEARTBEAT] Received heartbeat for session {session_id}, connection {body.connection_id}"
-    )
     success = await execution_connection_service.update_heartbeat(
         session_id, body.connection_id
     )
-    print(f"[HEARTBEAT] Updated: success={success}")
     return HeartbeatResponse(active=success)
 
 
