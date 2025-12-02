@@ -18,6 +18,7 @@ const MAIN_EVENT_TYPES: ExecutionEventType[] = [
   "artifact_created",
   "artifact_analysis_complete",
   "paused",
+  "resumed",
   "error",
   "done",
 ];
@@ -126,30 +127,52 @@ export function ExecutionLogBlock({
         {/* Collapsed: show only last message */}
         {!isExpanded && displayedMessages.length > 0 && (
           <div className="py-1">
-            {displayedMessages.map((message, index) => (
-              <ChatMessage
-                key={index}
-                messageRole={message.role}
-                content={message.content}
-                executionEvent={message.executionEvent}
-                compact
-              />
-            ))}
+            {displayedMessages.map((message, index) =>
+              message.executionEvent?.type === "resumed" ? (
+                <div
+                  key={index}
+                  className="flex items-center gap-2 py-2 px-3 text-muted-foreground text-xs"
+                >
+                  <div className="flex-1 border-t border-dashed border-muted-foreground/30" />
+                  <span>Resumed</span>
+                  <div className="flex-1 border-t border-dashed border-muted-foreground/30" />
+                </div>
+              ) : (
+                <ChatMessage
+                  key={index}
+                  messageRole={message.role}
+                  content={message.content}
+                  executionEvent={message.executionEvent}
+                  compact
+                />
+              )
+            )}
           </div>
         )}
 
         {/* Expanded: show all filtered messages */}
         <CollapsibleContent>
           <div ref={scrollRef} className="py-1 max-h-96 overflow-y-auto">
-            {filteredMessages.map((message, index) => (
-              <ChatMessage
-                key={index}
-                messageRole={message.role}
-                content={message.content}
-                executionEvent={message.executionEvent}
-                compact
-              />
-            ))}
+            {filteredMessages.map((message, index) =>
+              message.executionEvent?.type === "resumed" ? (
+                <div
+                  key={index}
+                  className="flex items-center gap-2 py-2 px-3 text-muted-foreground text-xs"
+                >
+                  <div className="flex-1 border-t border-dashed border-muted-foreground/30" />
+                  <span>Resumed</span>
+                  <div className="flex-1 border-t border-dashed border-muted-foreground/30" />
+                </div>
+              ) : (
+                <ChatMessage
+                  key={index}
+                  messageRole={message.role}
+                  content={message.content}
+                  executionEvent={message.executionEvent}
+                  compact
+                />
+              )
+            )}
           </div>
         </CollapsibleContent>
       </div>

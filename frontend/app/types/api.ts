@@ -112,6 +112,7 @@ export type ExecutionEventType =
   | "summary_creating"
   | "execution_summary"
   | "paused"
+  | "resumed"
   | "error"
   | "done";
 
@@ -189,6 +190,11 @@ export interface ExecutionPausedEvent {
   reason: "client_disconnected" | "user_requested";
 }
 
+export interface ExecutionResumedEvent {
+  type: "resumed";
+  timestamp: string;
+}
+
 export type ExecutionEvent =
   | TaskSelectedEvent
   | ToolCallEvent
@@ -200,6 +206,7 @@ export type ExecutionEvent =
   | SummaryCreatingEvent
   | ExecutionSummaryEvent
   | ExecutionPausedEvent
+  | ExecutionResumedEvent
   | ExecutionErrorEvent
   | ExecutionDoneEvent;
 

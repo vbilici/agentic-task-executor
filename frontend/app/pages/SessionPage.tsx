@@ -548,15 +548,26 @@ export function SessionPage() {
   const handleExecute = () => {
     if (!sessionId || isExecuting) return;
 
+    const isResuming = session?.status === "paused";
+
     // Set global busy state
     setBusySession(sessionId);
 
     setIsExecuting(true);
 
-    // Add a system message indicating execution started
+    // Add a message indicating execution started/resumed
     setMessages((prev) => [
       ...prev,
-      { role: "system" as const, content: "Starting task execution..." },
+      isResuming
+        ? {
+            role: "system" as const,
+            content: "",
+            executionEvent: {
+              type: "resumed" as const,
+              timestamp: new Date().toISOString(),
+            },
+          }
+        : { role: "system" as const, content: "Starting task execution..." },
     ]);
 
     // Update session status (local + sidebar)
