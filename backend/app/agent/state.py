@@ -45,6 +45,7 @@ class ExecutionState(TypedDict):
         task_result: Result summary from task execution
         created_artifact: Artifact created by the artifact_creator node
         is_complete: Whether execution is complete
+        execution_start_time: Formatted execution start timestamp for date context
     """
 
     messages: Annotated[list[BaseMessage], add_messages]
@@ -55,3 +56,4 @@ class ExecutionState(TypedDict):
     task_result: str | None
     created_artifact: dict[str, str] | None
     is_complete: bool
+    execution_start_time: str | None

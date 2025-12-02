@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+from datetime import UTC, datetime
 from typing import Annotated
 from uuid import UUID
 
@@ -112,6 +113,9 @@ async def execute_tasks(session_id: UUID, request: Request) -> StreamingResponse
 
     async def event_stream():
         """Generate SSE events from task execution."""
+        # Capture execution start time for consistent date context across all tasks
+        execution_start_time = datetime.now(UTC).strftime("%A, %B %d, %Y at %H:%M UTC")
+
         # Emit connection event so frontend can start sending heartbeats
         yield _sse_event(
             "connection", {"type": "connection", "connectionId": str(connection_id)}
@@ -184,7 +188,12 @@ async def execute_tasks(session_id: UUID, request: Request) -> StreamingResponse
                 # Execute the task and stream events, passing previous results for context
                 try:
                     async for event in execute_single_task(
-                        graph, session_id, task_dict, config, completed_task_results
+                        graph,
+                        session_id,
+                        task_dict,
+                        config,
+                        completed_task_results,
+                        execution_start_time,
                     ):
                         # Check if connection is still active before yielding
                         if not await execution_connection_service.is_connection_active(

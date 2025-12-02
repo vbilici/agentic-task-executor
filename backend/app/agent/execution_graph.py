@@ -50,6 +50,9 @@ class ArtifactDecision(BaseModel):
 
 EXECUTION_PROMPT = """You are a task execution agent that completes tasks using available tools.
 
+## Current Date & Time
+Today is {current_date}. Use this for any date-related reasoning, searches, or calculations.
+
 ## Current Task
 Title: {task_title}
 Description: {task_description}
@@ -67,7 +70,7 @@ Task ID: {task_id}
 ## Available Tools
 - web_search: Search the internet for current information
 - calculator: Perform mathematical calculations
-- get_current_datetime: Get the current date and time
+- get_current_datetime: Get the current date and time (for real-time precision if needed)
 - format_date: Format dates in different styles
 - calculate_date_difference: Calculate time between two dates
 - add_time_to_date: Add or subtract time from a date
@@ -75,19 +78,9 @@ Task ID: {task_id}
 - read_artifact: Read content from a previously created artifact
 - list_artifacts: List all artifacts in the current session
 
-## CRITICAL - Date and Time Awareness
-- You do NOT know the current date or time! Your training data is outdated.
-- ALWAYS use get_current_datetime FIRST before any task involving:
-  - Weather forecasts or conditions
-  - Scheduling or calendars
-  - News or current events
-  - Any date calculations or comparisons
-  - Relative dates like "next week", "tomorrow", "in December"
-- When searching for time-sensitive information, INCLUDE THE CORRECT YEAR in your search query
-- Example: If user asks about "weather for December 2nd", first get current date, then search "weather [city] December 2 2025" (using the actual current year)
-
 ## Guidelines
 - Be thorough but efficient
+- When searching for time-sensitive information, INCLUDE THE CORRECT YEAR in your search query based on the current date above
 - If you need information, use web_search
 - For any calculations, use the calculator tool
 - Provide clear, actionable results with all relevant details
@@ -191,6 +184,7 @@ def create_execution_graph() -> StateGraph:
             task_description = current_task.get("description", "No description")
 
             prompt = EXECUTION_PROMPT.format(
+                current_date=state.get("execution_start_time", "unknown"),
                 task_title=task_title,
                 task_description=task_description or "No additional details",
                 session_id=state["session_id"],
@@ -402,6 +396,7 @@ async def execute_single_task(
     task: dict[str, Any],
     config: dict[str, Any],
     previous_results: list[dict[str, Any]] | None = None,
+    execution_start_time: str | None = None,
 ) -> AsyncIterator[dict[str, Any]]:
     """Execute a single task and yield streaming events.
 
@@ -411,6 +406,7 @@ async def execute_single_task(
         task: The task dict with id, title, description
         config: LangGraph config with thread_id
         previous_results: Results from previously completed tasks for context
+        execution_start_time: Formatted timestamp for date context in prompts
 
     Yields:
         Events dict with type and payload for SSE streaming
@@ -451,6 +447,7 @@ Please complete this task using the available tools and the context from previou
         "task_result": None,
         "created_artifact": None,
         "is_complete": False,
+        "execution_start_time": execution_start_time,
     }
 
     # Track emitted events to prevent duplicates
