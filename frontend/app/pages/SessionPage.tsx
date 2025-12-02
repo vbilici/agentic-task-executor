@@ -62,6 +62,10 @@ export function SessionPage() {
   const [isExecuting, setIsExecuting] = useState(false);
   const [isSummarizing, setIsSummarizing] = useState(false);
 
+  // Heartbeat state for execution connection tracking
+  const heartbeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const executionConnectionIdRef = useRef<string | null>(null);
+
   // Execution log display state
   const [isExecutionLogsExpanded, setIsExecutionLogsExpanded] = useState(false);
   const [isDebugMode, setIsDebugMode] = useState(false);
@@ -223,6 +227,47 @@ export function SessionPage() {
     return task?.title;
   }, []);
 
+  // Helper to stop heartbeat
+  const stopHeartbeat = useCallback(() => {
+    if (heartbeatIntervalRef.current) {
+      clearInterval(heartbeatIntervalRef.current);
+      heartbeatIntervalRef.current = null;
+    }
+    executionConnectionIdRef.current = null;
+  }, []);
+
+  // Helper to start heartbeat for execution connection
+  const startHeartbeat = useCallback((connectionId: string) => {
+    // Stop any existing heartbeat first
+    stopHeartbeat();
+
+    const currentSessionId = sessionIdRef.current;
+    if (!currentSessionId) return;
+
+    executionConnectionIdRef.current = connectionId;
+
+    // Send heartbeat every 5 seconds
+    heartbeatIntervalRef.current = setInterval(async () => {
+      try {
+        const result = await api.sendExecutionHeartbeat(currentSessionId, connectionId);
+        if (!result.active) {
+          // Connection was superseded - stop sending heartbeats
+          stopHeartbeat();
+        }
+      } catch {
+        // Network error - heartbeat will timeout on backend
+        // Don't stop the interval, let it retry
+      }
+    }, 5000);
+  }, [stopHeartbeat]);
+
+  // Cleanup heartbeat on unmount
+  useEffect(() => {
+    return () => {
+      stopHeartbeat();
+    };
+  }, [stopHeartbeat]);
+
   // Summarize SSE handler - handles streaming summary after execution
   // Uses union type to handle both ChatEvent and artifact_created from ExecutionEvent
   const { connect: connectSummarize } = useSSE<ChatEvent | ExecutionEvent>({
@@ -288,10 +333,16 @@ export function SessionPage() {
   }, [sessionId, connectSummarize]);
 
   // Execution SSE handler - we use 'unknown' first to handle content events from backend
-  const { connect: connectExecution } = useSSE<ExecutionEvent | { type: "content"; content: string }>({
-    onMessage: useCallback((event: ExecutionEvent | { type: "content"; content: string }) => {
+  const { connect: connectExecution } = useSSE<ExecutionEvent | { type: "content"; content: string } | { type: "connection"; connectionId: string }>({
+    onMessage: useCallback((event: ExecutionEvent | { type: "content"; content: string } | { type: "connection"; connectionId: string }) => {
       // Skip content events (streaming tokens) - they shouldn't appear in the chat
       if (event.type === "content") {
+        return;
+      }
+
+      // Handle connection event - start heartbeat
+      if (event.type === "connection") {
+        startHeartbeat(event.connectionId);
         return;
       }
 
@@ -350,6 +401,8 @@ export function SessionPage() {
         }
         case "done":
           setIsExecuting(false);
+          // Stop heartbeat - execution completed
+          stopHeartbeat();
           // Update session status
           setSession((prev) =>
             prev ? { ...prev, status: "completed" } : prev
@@ -359,6 +412,8 @@ export function SessionPage() {
           break;
         case "paused":
           setIsExecuting(false);
+          // Stop heartbeat - execution paused
+          stopHeartbeat();
           // Update session status to paused
           setSession((prev) =>
             prev ? { ...prev, status: "paused" } : prev
@@ -379,12 +434,14 @@ export function SessionPage() {
           } else {
             // Global error - stop execution
             setIsExecuting(false);
+            // Stop heartbeat - execution failed
+            stopHeartbeat();
             // Clear global busy state
             setBusySessionRef.current(null);
           }
           break;
       }
-    }, [getTaskTitle, sessionId, triggerSummarize]),
+    }, [getTaskTitle, sessionId, triggerSummarize, startHeartbeat, stopHeartbeat]),
   });
 
   const loadSession = useCallback(async () => {

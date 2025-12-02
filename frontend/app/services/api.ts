@@ -124,6 +124,20 @@ class ApiClient {
     );
   }
 
+  // Execution Heartbeat
+  async sendExecutionHeartbeat(
+    sessionId: string,
+    connectionId: string
+  ): Promise<{ active: boolean }> {
+    return this.request<{ active: boolean }>(
+      `/sessions/${sessionId}/execution-heartbeat`,
+      {
+        method: "POST",
+        body: JSON.stringify({ connection_id: connectionId }),
+      }
+    );
+  }
+
   // SSE Endpoints (return URL for EventSource)
   getChatSSEUrl(sessionId: string): string {
     return `${this.baseUrl}/sessions/${sessionId}/chat`;

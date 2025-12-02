@@ -8,6 +8,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 
 from app.agent.execution_graph import (
     create_execution_summary,
@@ -17,9 +18,23 @@ from app.agent.execution_graph import (
 from app.models.base import SessionStatus
 from app.models.execution_log import ExecutionLogsResponse
 from app.services.agent_service import agent_service
+from app.services.execution_connection_service import execution_connection_service
 from app.services.execution_log_service import execution_log_service
 from app.services.session_service import session_service
 from app.services.task_service import task_service
+
+
+class HeartbeatRequest(BaseModel):
+    """Request body for execution heartbeat."""
+
+    connection_id: UUID
+
+
+class HeartbeatResponse(BaseModel):
+    """Response for execution heartbeat."""
+
+    active: bool
+
 
 router = APIRouter(prefix="/sessions", tags=["Execution"])
 
@@ -92,8 +107,17 @@ async def execute_tasks(session_id: UUID, request: Request) -> StreamingResponse
     # Update session status to executing
     await session_service.update_status(session_id, SessionStatus.EXECUTING)
 
+    # Register this execution connection - invalidates any previous connection
+    connection_id = await execution_connection_service.register_connection(session_id)
+    print(f"[EXECUTE] Registered connection {connection_id} for session {session_id}")
+
     async def event_stream():
         """Generate SSE events from task execution."""
+        # Emit connection event so frontend can start sending heartbeats
+        yield _sse_event(
+            "connection", {"type": "connection", "connectionId": str(connection_id)}
+        )
+
         # Initialize agent service if needed
         if not agent_service._initialized:
             await agent_service.initialize()
@@ -111,10 +135,14 @@ async def execute_tasks(session_id: UUID, request: Request) -> StreamingResponse
 
         try:
             for task in tasks_to_execute:
-                # Check for client disconnect at start of each task
-                if await request.is_disconnected():
-                    logger.info(
-                        f"[EXECUTE] Client disconnected before task, pausing session {session_id}"
+                # Check if connection is still active (heartbeat recent + connection_id valid)
+                is_active = await execution_connection_service.is_connection_active(
+                    session_id, connection_id, timeout_seconds=15
+                )
+                print(f"[EXECUTE] Connection check before task: is_active={is_active}")
+                if not is_active:
+                    print(
+                        f"[EXECUTE] Connection inactive before task, pausing session {session_id}"
                     )
                     await session_service.update_status(
                         session_id, SessionStatus.PAUSED
@@ -163,10 +191,12 @@ async def execute_tasks(session_id: UUID, request: Request) -> StreamingResponse
                     async for event in execute_single_task(
                         graph, session_id, task_dict, config, completed_task_results
                     ):
-                        # Check for client disconnect before yielding
-                        if await request.is_disconnected():
+                        # Check if connection is still active before yielding
+                        if not await execution_connection_service.is_connection_active(
+                            session_id, connection_id, timeout_seconds=15
+                        ):
                             logger.info(
-                                f"[EXECUTE] Client disconnected, pausing session {session_id}"
+                                f"[EXECUTE] Connection inactive during task, pausing session {session_id}"
                             )
                             await session_service.update_status(
                                 session_id, SessionStatus.PAUSED
@@ -242,6 +272,9 @@ async def execute_tasks(session_id: UUID, request: Request) -> StreamingResponse
             # Update session status to completed
             await session_service.update_status(session_id, SessionStatus.COMPLETED)
 
+            # Clear connection record since execution completed normally
+            await execution_connection_service.clear_connection(session_id)
+
             # Emit done event with summary
             event = {
                 "type": "done",
@@ -298,6 +331,29 @@ def _sse_event(event_type: str, data: dict) -> str:
         Formatted SSE event string
     """
     return f"event: {event_type}\ndata: {json.dumps(data)}\n\n"
+
+
+@router.post("/{session_id}/execution-heartbeat")
+async def execution_heartbeat(
+    session_id: UUID, body: HeartbeatRequest
+) -> HeartbeatResponse:
+    """Update heartbeat for an active execution connection.
+
+    Frontend calls this every 5 seconds during execution to indicate
+    the client is still connected. This endpoint is lightweight and
+    NOT logged to execution_logs - invisible to users.
+
+    If the connection_id no longer matches (superseded by new execution),
+    returns active=False so the old tab knows to stop sending heartbeats.
+    """
+    print(
+        f"[HEARTBEAT] Received heartbeat for session {session_id}, connection {body.connection_id}"
+    )
+    success = await execution_connection_service.update_heartbeat(
+        session_id, body.connection_id
+    )
+    print(f"[HEARTBEAT] Updated: success={success}")
+    return HeartbeatResponse(active=success)
 
 
 @router.post("/{session_id}/summarize")
