@@ -3,6 +3,8 @@
  * Uses react-markdown for rendering.
  */
 
+import type { Components } from "react-markdown";
+
 // Re-export ReactMarkdown for convenience
 export { default as ReactMarkdown } from "react-markdown";
 
@@ -14,9 +16,17 @@ export const markdownProseClasses = "prose prose-sm dark:prose-invert max-w-none
 
 /**
  * Custom components configuration for react-markdown.
- * Can be extended as needed.
+ * Links open in new tabs with security attributes.
  */
-export const markdownComponents = {
-  // Add custom component overrides here if needed in the future
-  // For example: code: CustomCodeBlock
+export const markdownComponents: Components = {
+  a: ({ href, children }) => (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-blue-600 hover:underline dark:text-blue-400"
+    >
+      {children}
+    </a>
+  ),
 };

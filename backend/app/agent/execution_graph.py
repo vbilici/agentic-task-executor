@@ -152,6 +152,7 @@ Task ID: {task_id}
 - When searching for time-sensitive information, INCLUDE THE CORRECT YEAR in your search query based on the current date above
 - If you need information, use web_search
 - For any calculations, use the calculator tool
+- Limit web_fetch to maximum 2 URLs per task to avoid token limits - choose the most relevant URLs from search results
 - Provide clear, actionable results with all relevant details
 - If a task cannot be completed, explain why
 
@@ -165,6 +166,14 @@ Task: {task_title}
 Review what was accomplished and provide:
 1. A clear result summary (what was done/found)
 2. A brief reflection on how well the task was completed
+
+If web_search or web_fetch tools were used, append a "Sources:" section at the end of your result with the URLs that were actually helpful. Format as a markdown list:
+
+Sources:
+- https://example.com/helpful-page
+- https://another.com/useful-info
+
+Only include URLs you referenced or found valuable. If no web tools were used or no URLs were helpful, omit the Sources section.
 
 Be concise but informative."""
 

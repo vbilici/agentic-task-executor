@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { ReactMarkdown, markdownComponents } from "@/lib/markdown";
 import type { Task, TaskStatus } from "@/types/api";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -157,15 +158,20 @@ export function TaskItem({ task, isPaused = false }: TaskItemProps) {
                 >
                   {showResult ? "Result" : "Error"}
                 </p>
-                <p
+                <div
                   className={cn(
-                    "text-sm whitespace-pre-wrap break-words",
-                    showResult && "text-green-600 dark:text-green-400",
+                    "text-sm prose prose-sm max-w-none dark:prose-invert",
                     showError && "text-red-600 dark:text-red-400"
                   )}
                 >
-                  {task.result}
-                </p>
+                  {showResult ? (
+                    <ReactMarkdown components={markdownComponents}>
+                      {task.result}
+                    </ReactMarkdown>
+                  ) : (
+                    <p className="whitespace-pre-wrap break-words">{task.result}</p>
+                  )}
+                </div>
               </div>
             )}
 
