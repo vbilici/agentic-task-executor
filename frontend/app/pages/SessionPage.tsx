@@ -128,6 +128,12 @@ export function SessionPage() {
     setBusySessionRef.current = setBusySession;
   }, [setBusySession]);
 
+  // Ref to updateSession for use in SSE handlers
+  const updateSessionRef = useRef(updateSession);
+  useEffect(() => {
+    updateSessionRef.current = updateSession;
+  }, [updateSession]);
+
   // Function to refresh session title after chat completes
   const refreshSessionTitle = useCallback(async () => {
     const currentSessionId = sessionIdRef.current;
@@ -403,10 +409,13 @@ export function SessionPage() {
           setIsExecuting(false);
           // Stop heartbeat - execution completed
           stopHeartbeat();
-          // Update session status
+          // Update session status (local + sidebar)
           setSession((prev) =>
             prev ? { ...prev, status: "completed" } : prev
           );
+          if (sessionId) {
+            updateSessionRef.current(sessionId, { status: "completed" });
+          }
           // Trigger summarize after execution completes
           triggerSummarize();
           break;
@@ -414,10 +423,13 @@ export function SessionPage() {
           setIsExecuting(false);
           // Stop heartbeat - execution paused
           stopHeartbeat();
-          // Update session status to paused
+          // Update session status (local + sidebar)
           setSession((prev) =>
             prev ? { ...prev, status: "paused" } : prev
           );
+          if (sessionId) {
+            updateSessionRef.current(sessionId, { status: "paused" });
+          }
           // Clear global busy state
           setBusySessionRef.current(null);
           break;
@@ -547,8 +559,9 @@ export function SessionPage() {
       { role: "system" as const, content: "Starting task execution..." },
     ]);
 
-    // Update session status
+    // Update session status (local + sidebar)
     setSession((prev) => (prev ? { ...prev, status: "executing" } : prev));
+    updateSession(sessionId, { status: "executing" });
 
     // Connect to execution SSE endpoint
     const executeUrl = api.getExecuteSSEUrl(sessionId);
