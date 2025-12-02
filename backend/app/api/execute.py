@@ -138,18 +138,22 @@ async def execute_tasks(session_id: UUID, request: Request) -> StreamingResponse
 
         try:
             for task in tasks_to_execute:
-                # Check if connection is still active (heartbeat recent + connection_id valid)
-                is_active = await execution_connection_service.is_connection_active(
+                # Check if connection is still active (heartbeat recent + connection_id valid + no pause request)
+                (
+                    is_active,
+                    pause_reason,
+                ) = await execution_connection_service.check_connection_status(
                     session_id, connection_id, timeout_seconds=15
                 )
                 if not is_active:
                     await session_service.update_status(
                         session_id, SessionStatus.PAUSED
                     )
-                    pause_event = {"type": "paused", "reason": "client_disconnected"}
+                    pause_event = {"type": "paused", "reason": pause_reason}
                     await execution_log_service.create_from_event(
                         session_id, pause_event
                     )
+                    yield _sse_event("paused", pause_event)
                     return  # Exit the generator
 
                 task_id = str(task.id)
@@ -185,6 +189,10 @@ async def execute_tasks(session_id: UUID, request: Request) -> StreamingResponse
                 task_failed = False
                 error_message = None
 
+                # Track pending tool calls to avoid pausing mid-tool-call
+                # Pausing between tool_call and tool_result corrupts LangGraph state
+                pending_tool_calls = 0
+
                 # Execute the task and stream events, passing previous results for context
                 try:
                     async for event in execute_single_task(
@@ -195,26 +203,41 @@ async def execute_tasks(session_id: UUID, request: Request) -> StreamingResponse
                         completed_task_results,
                         execution_start_time,
                     ):
-                        # Check if connection is still active before yielding
-                        if not await execution_connection_service.is_connection_active(
-                            session_id, connection_id, timeout_seconds=15
-                        ):
-                            logger.info(
-                                f"[EXECUTE] Connection inactive during task, pausing session {session_id}"
-                            )
-                            await session_service.update_status(
-                                session_id, SessionStatus.PAUSED
-                            )
-                            pause_event = {
-                                "type": "paused",
-                                "reason": "client_disconnected",
-                            }
-                            await execution_log_service.create_from_event(
-                                session_id, pause_event
-                            )
-                            return  # Exit the generator
-
                         event_type = event.get("type")
+
+                        # Track tool call state to determine safe pause points
+                        if event_type == "tool_call":
+                            pending_tool_calls += 1
+                        elif event_type == "tool_result":
+                            pending_tool_calls = max(0, pending_tool_calls - 1)
+
+                        # Only check for pause at safe points (not mid-tool-call)
+                        # Pausing between tool_call and tool_result corrupts the
+                        # message history and causes "tool_call_ids did not have
+                        # response messages" error on resume
+                        if pending_tool_calls == 0:
+                            (
+                                is_active,
+                                pause_reason,
+                            ) = await execution_connection_service.check_connection_status(
+                                session_id, connection_id, timeout_seconds=15
+                            )
+                            if not is_active:
+                                logger.info(
+                                    f"[EXECUTE] Connection inactive during task (reason={pause_reason}), pausing session {session_id}"
+                                )
+                                await session_service.update_status(
+                                    session_id, SessionStatus.PAUSED
+                                )
+                                pause_event = {
+                                    "type": "paused",
+                                    "reason": pause_reason,
+                                }
+                                await execution_log_service.create_from_event(
+                                    session_id, pause_event
+                                )
+                                yield _sse_event("paused", pause_event)
+                                return  # Exit the generator
 
                         # Track completion info
                         if event_type == "task_completed":
@@ -345,6 +368,13 @@ class ClaimResponse(BaseModel):
     connection_id: str | None
 
 
+class PauseResponse(BaseModel):
+    """Response for pause execution request."""
+
+    paused: bool
+    status: str
+
+
 @router.post("/{session_id}/claim-execution")
 async def claim_execution(session_id: UUID) -> ClaimResponse:
     """Claim an executing session, pausing any stale execution.
@@ -393,6 +423,38 @@ async def execution_heartbeat(
         session_id, body.connection_id
     )
     return HeartbeatResponse(active=success)
+
+
+@router.post("/{session_id}/pause-execution")
+async def pause_execution(session_id: UUID) -> PauseResponse:
+    """Request to pause an active execution.
+
+    The execution will pause gracefully after completing the current
+    tool operation. If no execution is active, returns paused=False.
+
+    This is a non-blocking endpoint - it sets a flag that the execution
+    loop will detect on its next checkpoint. The actual pause happens
+    asynchronously and the frontend will receive a "paused" SSE event.
+    """
+    session = await session_service.get(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    if session.status != SessionStatus.EXECUTING:
+        return PauseResponse(paused=False, status=session.status.value)
+
+    # Request pause via connection service
+    success = await execution_connection_service.request_pause(session_id)
+
+    if success:
+        return PauseResponse(paused=True, status="pausing")
+    else:
+        # No active connection - execution may have just completed
+        # Refresh session status
+        session = await session_service.get(session_id)
+        return PauseResponse(
+            paused=False, status=session.status.value if session else "unknown"
+        )
 
 
 @router.post("/{session_id}/summarize")

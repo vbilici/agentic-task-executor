@@ -60,6 +60,7 @@ export function SessionPage() {
 
   // Execution state
   const [isExecuting, setIsExecuting] = useState(false);
+  const [isPausing, setIsPausing] = useState(false);
   const [isSummarizing, setIsSummarizing] = useState(false);
 
   // Heartbeat state for execution connection tracking
@@ -421,6 +422,7 @@ export function SessionPage() {
           break;
         case "paused":
           setIsExecuting(false);
+          setIsPausing(false);
           // Stop heartbeat - execution paused
           stopHeartbeat();
           // Update session status (local + sidebar)
@@ -579,6 +581,34 @@ export function SessionPage() {
     connectExecution(executeUrl, {});
   };
 
+  const handlePause = async () => {
+    if (!sessionId || !isExecuting || isPausing) return;
+
+    setIsPausing(true);
+    try {
+      const result = await api.pauseExecution(sessionId);
+      // Pause request sent - the SSE will receive the "paused" event
+      // which will update isExecuting to false and reset isPausing
+      if (!result.paused) {
+        // Execution may have already completed
+        setIsPausing(false);
+      }
+      // If paused=true, we wait for the SSE "paused" event
+    } catch (error) {
+      console.error("Failed to pause execution:", error);
+      setIsPausing(false);
+    }
+  };
+
+  // Combined handler for execute/pause button
+  const handleExecuteOrPause = () => {
+    if (isExecuting) {
+      handlePause();
+    } else {
+      handleExecute();
+    }
+  };
+
   const handleSelectArtifact = (artifactId: string) => {
     setSelectedArtifactId(artifactId);
     // Close mobile sheet when selecting an artifact
@@ -697,8 +727,9 @@ export function SessionPage() {
         onSelectArtifact={handleSelectArtifact}
         canExecute={canExecute}
         isExecuting={isExecuting}
+        isPausing={isPausing}
         pendingTaskCount={isResume ? resumableTaskCount : pendingTaskCount}
-        onExecute={handleExecute}
+        onExecute={handleExecuteOrPause}
         showExecuteButton={session?.status !== "completed"}
         isExtractingTasks={isExtractingTasks}
         isResume={isResume}
@@ -719,8 +750,9 @@ export function SessionPage() {
             isExtractingTasks={isExtractingTasks}
             canExecute={canExecute}
             isExecuting={isExecuting}
+            isPausing={isPausing}
             pendingTaskCount={isResume ? resumableTaskCount : pendingTaskCount}
-            onExecute={handleExecute}
+            onExecute={handleExecuteOrPause}
             showExecuteButton={session?.status !== "completed"}
             isResume={isResume}
           />

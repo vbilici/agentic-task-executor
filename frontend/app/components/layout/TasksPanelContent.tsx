@@ -11,6 +11,7 @@ interface TasksPanelContentProps {
   // Execute button props
   canExecute: boolean;
   isExecuting: boolean;
+  isPausing?: boolean;
   pendingTaskCount: number;
   onExecute: () => void;
   showExecuteButton: boolean;
@@ -22,6 +23,7 @@ export function TasksPanelContent({
   isExtractingTasks = false,
   canExecute,
   isExecuting,
+  isPausing = false,
   pendingTaskCount,
   onExecute,
   showExecuteButton,
@@ -72,6 +74,7 @@ export function TasksPanelContent({
             onClick={onExecute}
             disabled={!canExecute}
             isExecuting={isExecuting}
+            isPausing={isPausing}
             pendingTaskCount={pendingTaskCount}
             isResume={isResume}
           />

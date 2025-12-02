@@ -5,7 +5,7 @@ from collections.abc import AsyncIterator
 from typing import Any, Literal
 from uuid import UUID
 
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, StateGraph
 from langgraph.prebuilt import ToolNode
@@ -19,6 +19,75 @@ from app.models.base import ArtifactType
 from app.services.artifact_service import artifact_service
 
 logger = logging.getLogger("uvicorn.error")
+
+
+async def fix_interrupted_tool_calls(graph: Any, config: dict[str, Any]) -> bool:
+    """Fix checkpoint with pending tool calls by adding interruption responses.
+
+    When execution is paused mid-tool-call, the checkpoint contains an AIMessage
+    with tool_calls that don't have corresponding ToolMessage responses. This
+    causes the LLM API to reject the message history on resume.
+
+    This function detects this state and adds ToolMessage responses indicating
+    the calls were interrupted, allowing the agent to retry them naturally.
+
+    Returns:
+        True if the checkpoint was fixed, False if no fix was needed.
+    """
+    try:
+        state = await graph.aget_state(config)
+        if not state or not state.values:
+            return False
+
+        messages = state.values.get("messages", [])
+        if not messages:
+            return False
+
+        # Find the last AIMessage with tool_calls
+        last_ai_msg_idx = None
+        for i in range(len(messages) - 1, -1, -1):
+            if isinstance(messages[i], AIMessage):
+                last_ai_msg_idx = i
+                break
+
+        if last_ai_msg_idx is None:
+            return False
+
+        last_ai_msg = messages[last_ai_msg_idx]
+        if not hasattr(last_ai_msg, "tool_calls") or not last_ai_msg.tool_calls:
+            return False
+
+        # Get tool_call_ids that need responses
+        pending_ids = {tc["id"] for tc in last_ai_msg.tool_calls}
+
+        # Remove IDs that already have responses
+        for msg in messages[last_ai_msg_idx + 1 :]:
+            if isinstance(msg, ToolMessage) and hasattr(msg, "tool_call_id"):
+                pending_ids.discard(msg.tool_call_id)
+
+        if not pending_ids:
+            return False
+
+        # Add ToolMessage responses for interrupted calls
+        logger.info(f"[EXECUTE] Fixing {len(pending_ids)} interrupted tool calls")
+
+        responses = []
+        for tc in last_ai_msg.tool_calls:
+            if tc["id"] in pending_ids:
+                responses.append(
+                    ToolMessage(
+                        content="[Tool call interrupted - please retry]",
+                        tool_call_id=tc["id"],
+                        name=tc.get("name", "unknown"),
+                    )
+                )
+
+        await graph.aupdate_state(config, {"messages": responses})
+        return True
+
+    except Exception as e:
+        logger.warning(f"[EXECUTE] Failed to fix interrupted tool calls: {e}")
+        return False
 
 
 class TaskResult(BaseModel):
@@ -452,6 +521,10 @@ Please complete this task using the available tools and the context from previou
 
     # Track emitted events to prevent duplicates
     artifact_analysis_started = False
+
+    # Fix any interrupted tool calls from previous pause
+    # This adds dummy responses so the agent can retry them
+    await fix_interrupted_tool_calls(graph, config)
 
     try:
         # Stream events from the graph

@@ -151,6 +151,18 @@ class ApiClient {
     });
   }
 
+  // Pause execution (user-initiated pause)
+  async pauseExecution(
+    sessionId: string
+  ): Promise<{ paused: boolean; status: string }> {
+    return this.request<{ paused: boolean; status: string }>(
+      `/sessions/${sessionId}/pause-execution`,
+      {
+        method: "POST",
+      }
+    );
+  }
+
   // SSE Endpoints (return URL for EventSource)
   getChatSSEUrl(sessionId: string): string {
     return `${this.baseUrl}/sessions/${sessionId}/chat`;

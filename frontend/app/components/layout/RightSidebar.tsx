@@ -15,6 +15,7 @@ interface RightSidebarProps {
   // Execute button props
   canExecute: boolean;
   isExecuting: boolean;
+  isPausing?: boolean;
   pendingTaskCount: number;
   onExecute: () => void;
   showExecuteButton: boolean;
@@ -32,6 +33,7 @@ export function RightSidebar({
   onSelectArtifact,
   canExecute,
   isExecuting,
+  isPausing = false,
   pendingTaskCount,
   onExecute,
   showExecuteButton,
@@ -74,6 +76,7 @@ export function RightSidebar({
               isExtractingTasks={isExtractingTasks}
               canExecute={canExecute}
               isExecuting={isExecuting}
+              isPausing={isPausing}
               pendingTaskCount={pendingTaskCount}
               onExecute={onExecute}
               showExecuteButton={showExecuteButton}
