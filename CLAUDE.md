@@ -178,11 +178,13 @@ pnpm build
 ```
 DATABASE_URL=postgresql://...
 ANTHROPIC_API_KEY=sk-ant-...
-TAVILY_API_KEY=tvly-...
+TAVILY_API_KEY=tvly-...          # Optional: enables web_search and web_fetch tools
 HOST=0.0.0.0
 PORT=8000
 DEBUG=true
 ```
+
+> **Note:** `TAVILY_API_KEY` is optional. When not provided, the application runs without web search capabilities (`web_search` and `web_fetch` tools are disabled).
 
 ### Frontend (.env.local)
 ```

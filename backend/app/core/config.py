@@ -17,7 +17,7 @@ class Settings(BaseSettings):
 
     # AI Services
     openai_api_key: str = Field(..., validation_alias="OPENAI_API_KEY")
-    tavily_api_key: str = Field(..., validation_alias="TAVILY_API_KEY")
+    tavily_api_key: str | None = Field(default=None, validation_alias="TAVILY_API_KEY")
 
     # Server
     host: str = Field(default="0.0.0.0")

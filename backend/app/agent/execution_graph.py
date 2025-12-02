@@ -12,7 +12,7 @@ from langgraph.prebuilt import ToolNode
 from pydantic import BaseModel, Field, SecretStr
 
 from app.agent.state import ExecutionState
-from app.agent.tools import ALL_TOOLS
+from app.agent.tools import get_available_tools
 from app.core.config import get_settings
 from app.models.artifact import ArtifactCreate
 from app.models.base import ArtifactType
@@ -137,15 +137,7 @@ Task ID: {task_id}
 4. When finished, provide a clear, detailed summary of what you accomplished and found
 
 ## Available Tools
-- web_search: Search the internet for current information
-- calculator: Perform mathematical calculations
-- get_current_datetime: Get the current date and time (for real-time precision if needed)
-- format_date: Format dates in different styles
-- calculate_date_difference: Calculate time between two dates
-- add_time_to_date: Add or subtract time from a date
-- get_day_of_week: Get the day of week for any date
-- read_artifact: Read content from a previously created artifact
-- list_artifacts: List all artifacts in the current session
+{available_tools}
 
 ## Guidelines
 - Be thorough but efficient
@@ -209,9 +201,39 @@ Do NOT create an artifact if:
 - Make it useful as a standalone reference document"""
 
 
+# Tool documentation mapping for dynamic prompt generation
+TOOL_DOCS = {
+    "web_search": "web_search: Search the internet for current information",
+    "web_fetch": "web_fetch: Fetch and extract content from a URL",
+    "calculator": "calculator: Perform mathematical calculations",
+    "get_current_datetime": "get_current_datetime: Get the current date and time (for real-time precision if needed)",
+    "format_date": "format_date: Format dates in different styles",
+    "calculate_date_difference": "calculate_date_difference: Calculate time between two dates",
+    "add_time_to_date": "add_time_to_date: Add or subtract time from a date",
+    "get_day_of_week": "get_day_of_week: Get the day of week for any date",
+    "create_artifact": "create_artifact: Create a new artifact for the session",
+    "read_artifact": "read_artifact: Read content from a previously created artifact",
+    "list_artifacts": "list_artifacts: List all artifacts in the current session",
+}
+
+
+def _get_tools_documentation(tools: list[Any]) -> str:
+    """Generate documentation string for available tools."""
+    lines = []
+    for tool in tools:
+        name = tool.name if hasattr(tool, "name") else str(tool)
+        if name in TOOL_DOCS:
+            lines.append(f"- {TOOL_DOCS[name]}")
+    return "\n".join(lines)
+
+
 def create_execution_graph() -> StateGraph[ExecutionState]:
     """Create the execution agent graph with tools for task execution."""
     settings = get_settings()
+
+    # Get available tools based on configuration
+    tools = get_available_tools()
+    tools_documentation = _get_tools_documentation(tools)
 
     # Create the LLM with tools
     llm = ChatOpenAI(
@@ -221,7 +243,7 @@ def create_execution_graph() -> StateGraph[ExecutionState]:
     )
 
     # Bind tools to the LLM
-    llm_with_tools = llm.bind_tools(ALL_TOOLS)
+    llm_with_tools = llm.bind_tools(tools)
 
     # Create LLM for structured output (reflection)
     reflection_llm = ChatOpenAI(
@@ -238,7 +260,7 @@ def create_execution_graph() -> StateGraph[ExecutionState]:
     ).with_structured_output(ArtifactDecision)
 
     # Create tool node
-    tool_node = ToolNode(ALL_TOOLS)
+    tool_node = ToolNode(tools)
 
     async def agent_node(state: ExecutionState) -> dict[str, Any]:
         """Main agent node that decides what to do next."""
@@ -264,6 +286,7 @@ def create_execution_graph() -> StateGraph[ExecutionState]:
                 task_description=task_description or "No additional details",
                 session_id=state["session_id"],
                 task_id=state["current_task_id"],
+                available_tools=tools_documentation,
             )
             system_msg = SystemMessage(content=prompt)
 

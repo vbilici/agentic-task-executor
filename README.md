@@ -23,7 +23,8 @@ App uses [LangGraph](https://langchain-ai.github.io/langgraph/) to orchestrate t
 
 | Tool | Description |
 |------|-------------|
-| `web_search` | Search the internet via Tavily API |
+| `web_search` | Search the internet via Tavily API* |
+| `web_fetch` | Fetch and extract content from URLs via Tavily API* |
 | `calculator` | Perform mathematical calculations |
 | `get_current_datetime` | Get current date and time |
 | `format_date` | Format dates in different styles |
@@ -31,6 +32,8 @@ App uses [LangGraph](https://langchain-ai.github.io/langgraph/) to orchestrate t
 | `add_time_to_date` | Add/subtract time from a date |
 | `read_artifact` | Read previously created artifacts |
 | `list_artifacts` | List all session artifacts |
+
+*Requires `TAVILY_API_KEY` to be configured. These tools are automatically disabled when the key is not provided.
 
 ## Tech Stack
 
@@ -51,7 +54,7 @@ App uses [LangGraph](https://langchain-ai.github.io/langgraph/) to orchestrate t
 - **pnpm** - Node.js package manager ([install](https://pnpm.io/installation))
 - **Supabase** account with a project
 - **OpenAI** API key
-- **Tavily** API key (for web search)
+- **Tavily** API key (optional, for web search tools)
 
 ## Installation
 
@@ -79,7 +82,7 @@ Create a `.env` file in the `backend/` directory:
 ```env
 DATABASE_URL=postgresql://postgres:[PASSWORD]@[HOST]:[PORT]/postgres
 OPENAI_API_KEY=sk-...
-TAVILY_API_KEY=tvly-...
+TAVILY_API_KEY=tvly-...  # Optional: enables web_search and web_fetch tools
 HOST=0.0.0.0
 PORT=8000
 DEBUG=true
