@@ -1,5 +1,6 @@
 """LangGraph planning agent definition."""
 
+from datetime import datetime
 from typing import Literal
 
 from langchain_core.messages import SystemMessage
@@ -65,6 +66,9 @@ IMPORTANT - Date and Time Awareness:
 Remember: You're helping the user plan. Focus on understanding their needs."""
 
 TASK_EXTRACTION_PROMPT = """Based on the conversation, extract actionable tasks for the user's goal.
+
+## Current Date & Time
+Today is {current_date}. Use this for any date-related task planning.
 
 Rules:
 - Create 3-5 concrete, actionable tasks
@@ -187,8 +191,10 @@ def create_planning_graph() -> StateGraph:
                 "ready_to_create_tasks": False,
             }
 
-        # Run task extraction
-        system_msg = SystemMessage(content=TASK_EXTRACTION_PROMPT)
+        # Run task extraction with current date context
+        current_date = datetime.now().strftime("%A, %B %d, %Y at %I:%M %p")
+        prompt = TASK_EXTRACTION_PROMPT.format(current_date=current_date)
+        system_msg = SystemMessage(content=prompt)
         messages_with_system = [system_msg, *messages]
         result: TaskList = await task_llm.ainvoke(messages_with_system)
 
