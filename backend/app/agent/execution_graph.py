@@ -2,14 +2,14 @@
 
 import logging
 from collections.abc import AsyncIterator
-from typing import Any, Literal
+from typing import Any, Literal, cast
 from uuid import UUID
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, StateGraph
 from langgraph.prebuilt import ToolNode
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SecretStr
 
 from app.agent.state import ExecutionState
 from app.agent.tools import ALL_TOOLS
@@ -209,15 +209,14 @@ Do NOT create an artifact if:
 - Make it useful as a standalone reference document"""
 
 
-def create_execution_graph() -> StateGraph:
+def create_execution_graph() -> StateGraph[ExecutionState]:
     """Create the execution agent graph with tools for task execution."""
     settings = get_settings()
 
     # Create the LLM with tools
     llm = ChatOpenAI(
         model="gpt-4o",
-        api_key=settings.openai_api_key,
-        max_tokens=4096,
+        api_key=SecretStr(settings.openai_api_key),
         streaming=True,
     )
 
@@ -227,16 +226,14 @@ def create_execution_graph() -> StateGraph:
     # Create LLM for structured output (reflection)
     reflection_llm = ChatOpenAI(
         model="gpt-4o",
-        api_key=settings.openai_api_key,
-        max_tokens=1024,
+        api_key=SecretStr(settings.openai_api_key),
         streaming=False,
     ).with_structured_output(TaskResult)
 
     # Create LLM for artifact creation decision
     artifact_llm = ChatOpenAI(
         model="gpt-4o",
-        api_key=settings.openai_api_key,
-        max_tokens=4096,
+        api_key=SecretStr(settings.openai_api_key),
         streaming=False,
     ).with_structured_output(ArtifactDecision)
 
@@ -305,7 +302,9 @@ def create_execution_graph() -> StateGraph:
         ]
 
         # Get structured task result
-        task_result_obj: TaskResult = await reflection_llm.ainvoke(result_messages)
+        task_result_obj = cast(
+            TaskResult, await reflection_llm.ainvoke(result_messages)
+        )
         task_result = task_result_obj.result
 
         # Skip artifact creation if no meaningful result
@@ -357,7 +356,7 @@ def create_execution_graph() -> StateGraph:
         ]
 
         # Get structured decision
-        decision: ArtifactDecision = await artifact_llm.ainvoke(artifact_messages)
+        decision = cast(ArtifactDecision, await artifact_llm.ainvoke(artifact_messages))
 
         # If should create, call artifact service directly
         if decision.should_create and decision.name and decision.content:
@@ -410,7 +409,7 @@ def create_execution_graph() -> StateGraph:
         return "artifact_creator"
 
     # Build the graph
-    builder: StateGraph = StateGraph(ExecutionState)
+    builder: StateGraph[ExecutionState] = StateGraph(ExecutionState)
 
     # Add nodes
     builder.add_node("agent", agent_node)
@@ -457,10 +456,10 @@ def _format_messages(messages: list[Any]) -> str:
 
 
 # Lazy initialization for the execution graph builder
-_execution_graph_builder: StateGraph | None = None
+_execution_graph_builder: StateGraph[ExecutionState] | None = None
 
 
-def get_execution_graph_builder() -> StateGraph:
+def get_execution_graph_builder() -> StateGraph[ExecutionState]:
     """Get or create the execution graph builder (lazy initialization)."""
     global _execution_graph_builder
     if _execution_graph_builder is None:
@@ -674,11 +673,11 @@ class ExecutionSummary(BaseModel):
 
 async def create_execution_summary(
     session_id: UUID,
-    task_results: list[dict],
+    task_results: list[dict[str, Any]],
     total: int,
     completed: int,
     failed: int,
-) -> dict | None:
+) -> dict[str, Any] | None:
     """Create a summary of the entire execution.
 
     Args:
@@ -713,17 +712,19 @@ async def create_execution_summary(
         # Create LLM for structured output
         summary_llm = ChatOpenAI(
             model="gpt-4o",
-            api_key=settings.openai_api_key,
-            max_tokens=4096,
+            api_key=SecretStr(settings.openai_api_key),
             streaming=False,
         ).with_structured_output(ExecutionSummary)
 
         # Generate summary
-        result: ExecutionSummary = summary_llm.invoke(
-            [
-                SystemMessage(content=prompt),
-                HumanMessage(content="Generate the execution summary."),
-            ]
+        result = cast(
+            ExecutionSummary,
+            summary_llm.invoke(
+                [
+                    SystemMessage(content=prompt),
+                    HumanMessage(content="Generate the execution summary."),
+                ]
+            ),
         )
 
         # Create artifact

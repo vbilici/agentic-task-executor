@@ -1,5 +1,6 @@
 """Artifact service for CRUD operations."""
 
+from typing import Any, cast
 from uuid import UUID
 
 from app.core.database import get_supabase_client
@@ -24,7 +25,8 @@ class ArtifactService:
             "content": artifact.content,
         }
         result = self.client.table(self.table).insert(data).execute()
-        return Artifact(**result.data[0])
+        rows = cast(list[dict[str, Any]], result.data)
+        return Artifact(**rows[0])
 
     async def get(self, artifact_id: UUID) -> Artifact | None:
         """Get an artifact by ID with full content."""
@@ -34,9 +36,10 @@ class ArtifactService:
             .eq("id", str(artifact_id))
             .execute()
         )
-        if not result.data:
+        rows = cast(list[dict[str, Any]], result.data)
+        if not rows:
             return None
-        return Artifact(**result.data[0])
+        return Artifact(**rows[0])
 
     async def get_summary(self, artifact_id: UUID) -> ArtifactSummary | None:
         """Get an artifact summary by ID (without content)."""
@@ -46,9 +49,10 @@ class ArtifactService:
             .eq("id", str(artifact_id))
             .execute()
         )
-        if not result.data:
+        rows = cast(list[dict[str, Any]], result.data)
+        if not rows:
             return None
-        return ArtifactSummary(**result.data[0])
+        return ArtifactSummary(**rows[0])
 
     async def list_by_session(
         self,
@@ -66,7 +70,8 @@ class ArtifactService:
             query = query.eq("type", artifact_type.value)
 
         result = query.order("created_at").execute()
-        return [ArtifactSummary(**row) for row in result.data]
+        rows = cast(list[dict[str, Any]], result.data)
+        return [ArtifactSummary(**row) for row in rows]
 
     async def list_by_task(self, task_id: UUID) -> list[ArtifactSummary]:
         """List all artifacts for a task (summaries only)."""
@@ -77,7 +82,8 @@ class ArtifactService:
             .order("created_at")
             .execute()
         )
-        return [ArtifactSummary(**row) for row in result.data]
+        rows = cast(list[dict[str, Any]], result.data)
+        return [ArtifactSummary(**row) for row in rows]
 
     async def get_content(self, artifact_id: UUID) -> str | None:
         """Get just the content of an artifact (for download)."""
@@ -87,16 +93,18 @@ class ArtifactService:
             .eq("id", str(artifact_id))
             .execute()
         )
-        if not result.data:
+        rows = cast(list[dict[str, Any]], result.data)
+        if not rows:
             return None
-        return str(result.data[0]["content"])
+        return str(rows[0]["content"])
 
     async def delete(self, artifact_id: UUID) -> bool:
         """Delete an artifact."""
         result = (
             self.client.table(self.table).delete().eq("id", str(artifact_id)).execute()
         )
-        return len(result.data) > 0
+        rows = cast(list[dict[str, Any]], result.data)
+        return len(rows) > 0
 
     async def delete_by_session(self, session_id: UUID) -> int:
         """Delete all artifacts for a session."""
@@ -106,7 +114,8 @@ class ArtifactService:
             .eq("session_id", str(session_id))
             .execute()
         )
-        return len(result.data)
+        rows = cast(list[dict[str, Any]], result.data)
+        return len(rows)
 
 
 # Singleton instance

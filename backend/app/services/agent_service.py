@@ -1,14 +1,16 @@
 """Agent service for managing LangGraph agents with persistence."""
 
 from collections.abc import AsyncIterator
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.runnables import RunnableConfig
 from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from psycopg.rows import dict_row
 from psycopg_pool import AsyncNullConnectionPool
+from pydantic import SecretStr
 
 from app.agent.graph import get_planning_graph_builder
 from app.agent.state import PlanningState
@@ -42,7 +44,8 @@ class AgentService:
         self._pool = pool
 
         # Create checkpointer
-        checkpointer = AsyncPostgresSaver(pool)
+        # Note: Type ignore needed due to psycopg_pool typing mismatch with langgraph
+        checkpointer = AsyncPostgresSaver(pool)  # type: ignore[arg-type]
         await checkpointer.setup()
         self._checkpointer = checkpointer
 
@@ -92,7 +95,7 @@ class AgentService:
         # Compile graph with checkpointer
         graph = get_planning_graph_builder().compile(checkpointer=self._checkpointer)
 
-        config = {
+        config: RunnableConfig = {
             "configurable": {
                 "thread_id": self._get_thread_id(session_id),
             }
@@ -130,7 +133,7 @@ class AgentService:
 
                 # When should_extract completes, emit tasks if any
                 elif event_type == "on_chain_end" and node_name == "should_extract":
-                    output = event.get("data", {}).get("output", {})
+                    output: dict[str, Any] = event.get("data", {}).get("output", {})
                     if isinstance(output, dict):
                         tasks = output.get("tasks", [])
                         if tasks and not tasks_yielded:
@@ -164,11 +167,13 @@ class AgentService:
             await self.initialize()
 
         graph = get_planning_graph_builder().compile(checkpointer=self._checkpointer)
-        config = {"configurable": {"thread_id": self._get_thread_id(session_id)}}
+        config: RunnableConfig = {
+            "configurable": {"thread_id": self._get_thread_id(session_id)}
+        }
 
         state = await graph.aget_state(config)
         if state and state.values:
-            return state.values.get("tasks", [])
+            return cast(list[dict[str, Any]], state.values.get("tasks", []))
         return []
 
     async def get_messages_from_state(self, session_id: UUID) -> list[dict[str, Any]]:
@@ -184,7 +189,9 @@ class AgentService:
             await self.initialize()
 
         graph = get_planning_graph_builder().compile(checkpointer=self._checkpointer)
-        config = {"configurable": {"thread_id": self._get_thread_id(session_id)}}
+        config: RunnableConfig = {
+            "configurable": {"thread_id": self._get_thread_id(session_id)}
+        }
 
         state = await graph.aget_state(config)
         if not state or not state.values:
@@ -302,8 +309,7 @@ Remember: The user just watched their tasks execute. Give them a scannable, help
         # Create standalone LLM with streaming
         llm = ChatOpenAI(
             model="gpt-4o",
-            api_key=settings.openai_api_key,
-            max_tokens=1024,
+            api_key=SecretStr(settings.openai_api_key),
             streaming=True,
         )
 
@@ -319,7 +325,7 @@ Remember: The user just watched their tasks execute. Give them a scannable, help
 
             # Stream the response
             async for chunk in llm.astream(messages):
-                if chunk.content:
+                if chunk.content and isinstance(chunk.content, str):
                     full_response += chunk.content
                     yield {"type": "content", "content": chunk.content}
 
@@ -328,13 +334,13 @@ Remember: The user just watched their tasks execute. Give them a scannable, help
                 graph = get_planning_graph_builder().compile(
                     checkpointer=self._checkpointer
                 )
-                config = {
+                update_config: RunnableConfig = {
                     "configurable": {"thread_id": self._get_thread_id(session_id)}
                 }
 
                 # Use aupdate_state to add only the AI response
                 await graph.aupdate_state(
-                    config,
+                    update_config,
                     {"messages": [AIMessage(content=full_response)]},
                 )
 

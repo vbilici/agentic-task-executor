@@ -1,5 +1,6 @@
 """Task service for CRUD operations."""
 
+from typing import Any, cast
 from uuid import UUID
 
 from app.core.database import get_supabase_client
@@ -24,7 +25,8 @@ class TaskService:
             "status": TaskStatus.PENDING.value,
         }
         result = self.client.table(self.table).insert(data).execute()
-        return Task(**result.data[0])
+        rows = cast(list[dict[str, Any]], result.data)
+        return Task(**rows[0])
 
     async def create_many(self, tasks: list[TaskCreate]) -> list[Task]:
         """Create multiple tasks at once."""
@@ -39,16 +41,18 @@ class TaskService:
             for t in tasks
         ]
         result = self.client.table(self.table).insert(data).execute()
-        return [Task(**row) for row in result.data]
+        rows = cast(list[dict[str, Any]], result.data)
+        return [Task(**row) for row in rows]
 
     async def get(self, task_id: UUID) -> Task | None:
         """Get a task by ID."""
         result = (
             self.client.table(self.table).select("*").eq("id", str(task_id)).execute()
         )
-        if not result.data:
+        rows = cast(list[dict[str, Any]], result.data)
+        if not rows:
             return None
-        return Task(**result.data[0])
+        return Task(**rows[0])
 
     async def list_by_session(self, session_id: UUID) -> list[Task]:
         """List all tasks for a session, ordered by order field."""
@@ -59,7 +63,8 @@ class TaskService:
             .order("order")
             .execute()
         )
-        return [Task(**row) for row in result.data]
+        rows = cast(list[dict[str, Any]], result.data)
+        return [Task(**row) for row in rows]
 
     async def update(self, task_id: UUID, update: TaskUpdate) -> Task | None:
         """Update a task."""
@@ -79,9 +84,10 @@ class TaskService:
         result = (
             self.client.table(self.table).update(data).eq("id", str(task_id)).execute()
         )
-        if not result.data:
+        rows = cast(list[dict[str, Any]], result.data)
+        if not rows:
             return None
-        return Task(**result.data[0])
+        return Task(**rows[0])
 
     async def update_status(
         self,
@@ -97,9 +103,10 @@ class TaskService:
         result = (
             self.client.table(self.table).update(data).eq("id", str(task_id)).execute()
         )
-        if not result.data:
+        rows = cast(list[dict[str, Any]], result.data)
+        if not rows:
             return None
-        return Task(**result.data[0])
+        return Task(**rows[0])
 
     async def delete_by_session(self, session_id: UUID) -> int:
         """Delete all tasks for a session."""
@@ -109,7 +116,8 @@ class TaskService:
             .eq("session_id", str(session_id))
             .execute()
         )
-        return len(result.data)
+        rows = cast(list[dict[str, Any]], result.data)
+        return len(rows)
 
     async def get_next_order(self, session_id: UUID) -> int:
         """Get the next order number for a session."""
@@ -121,9 +129,10 @@ class TaskService:
             .limit(1)
             .execute()
         )
-        if not result.data:
+        rows = cast(list[dict[str, Any]], result.data)
+        if not rows:
             return 0
-        return int(result.data[0]["order"]) + 1
+        return int(rows[0]["order"]) + 1
 
     async def get_pending_tasks(self, session_id: UUID) -> list[Task]:
         """Get all pending tasks for a session, ordered by order field."""
@@ -135,7 +144,8 @@ class TaskService:
             .order("order")
             .execute()
         )
-        return [Task(**row) for row in result.data]
+        rows = cast(list[dict[str, Any]], result.data)
+        return [Task(**row) for row in rows]
 
     async def get_resumable_tasks(self, session_id: UUID) -> list[Task]:
         """Get tasks that need execution when resuming: in_progress first, then pending.
@@ -152,7 +162,8 @@ class TaskService:
             .order("order")
             .execute()
         )
-        return [Task(**row) for row in result.data]
+        rows = cast(list[dict[str, Any]], result.data)
+        return [Task(**row) for row in rows]
 
     async def start_task(self, task_id: UUID) -> Task:
         """Start a task - changes status from pending to in_progress.
@@ -189,7 +200,8 @@ class TaskService:
             .eq("id", str(task_id))
             .execute()
         )
-        return Task(**result.data[0])
+        rows = cast(list[dict[str, Any]], result.data)
+        return Task(**rows[0])
 
     async def complete_task(
         self,
@@ -226,7 +238,8 @@ class TaskService:
         result = (
             self.client.table(self.table).update(data).eq("id", str(task_id)).execute()
         )
-        return Task(**result.data[0])
+        rows = cast(list[dict[str, Any]], result.data)
+        return Task(**rows[0])
 
     async def fail_task(
         self,
@@ -266,7 +279,8 @@ class TaskService:
             .eq("id", str(task_id))
             .execute()
         )
-        return Task(**result.data[0])
+        rows = cast(list[dict[str, Any]], result.data)
+        return Task(**rows[0])
 
 
 # Singleton instance

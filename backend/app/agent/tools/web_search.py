@@ -1,7 +1,7 @@
 """Web search tool using Tavily API."""
 
 from langchain_core.tools import tool
-from tavily import TavilyClient
+from tavily import TavilyClient  # type: ignore[import-untyped]
 
 from app.core.config import get_settings
 

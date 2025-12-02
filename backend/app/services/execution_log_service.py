@@ -1,6 +1,6 @@
 """Execution log service for CRUD operations."""
 
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 from app.core.database import get_supabase_client
@@ -27,7 +27,8 @@ class ExecutionLogService:
             "event_data": log.event_data,
         }
         result = self.client.table(self.table).insert(data).execute()
-        return ExecutionLog(**result.data[0])
+        rows = cast(list[dict[str, Any]], result.data)
+        return ExecutionLog(**rows[0])
 
     async def create_from_event(
         self,
@@ -64,7 +65,8 @@ class ExecutionLogService:
             .range(offset, offset + limit - 1)
             .execute()
         )
-        return [ExecutionLog(**row) for row in result.data]
+        rows = cast(list[dict[str, Any]], result.data)
+        return [ExecutionLog(**row) for row in rows]
 
     async def list_by_task(self, task_id: UUID) -> list[ExecutionLog]:
         """List all execution logs for a specific task."""
@@ -75,13 +77,14 @@ class ExecutionLogService:
             .order("created_at")
             .execute()
         )
-        return [ExecutionLog(**row) for row in result.data]
+        rows = cast(list[dict[str, Any]], result.data)
+        return [ExecutionLog(**row) for row in rows]
 
     async def count_by_session(self, session_id: UUID) -> int:
         """Count total execution logs for a session."""
         result = (
             self.client.table(self.table)
-            .select("id", count="exact")
+            .select("id", count="exact")  # type: ignore[arg-type]
             .eq("session_id", str(session_id))
             .execute()
         )
@@ -95,7 +98,8 @@ class ExecutionLogService:
             .eq("session_id", str(session_id))
             .execute()
         )
-        return len(result.data)
+        rows = cast(list[dict[str, Any]], result.data)
+        return len(rows)
 
 
 # Singleton instance

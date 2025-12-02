@@ -1,6 +1,7 @@
 """Chat API endpoint with SSE streaming."""
 
 import json
+from collections.abc import AsyncIterator
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException
@@ -43,7 +44,7 @@ async def chat(session_id: UUID, request: ChatRequest) -> StreamingResponse:
         title = request.message[:200] if len(request.message) > 200 else request.message
         await session_service.update_title(session_id, title)
 
-    async def event_stream():
+    async def event_stream() -> AsyncIterator[str]:
         """Generate SSE events from agent.
 
         Event flow (new):

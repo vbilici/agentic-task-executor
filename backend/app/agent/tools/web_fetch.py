@@ -1,7 +1,7 @@
 """Web fetch tool using Tavily Extract API."""
 
 from langchain_core.tools import tool
-from tavily import TavilyClient
+from tavily import TavilyClient  # type: ignore[import-untyped]
 
 from app.core.config import get_settings
 
@@ -44,7 +44,7 @@ def web_fetch(url: str) -> str:
         if not raw_content:
             return "The page was fetched but contained no extractable content."
 
-        return raw_content
+        return str(raw_content)
 
     except Exception as e:
         error_msg = str(e).lower()

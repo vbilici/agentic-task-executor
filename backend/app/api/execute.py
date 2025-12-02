@@ -3,8 +3,9 @@
 import asyncio
 import json
 import logging
+from collections.abc import AsyncIterator
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, Request
@@ -46,7 +47,7 @@ _SKIP_PERSIST_EVENTS = {"content"}
 
 
 async def _persist_and_yield_event(
-    session_id: UUID, event_type: str, event: dict
+    session_id: UUID, event_type: str, event: dict[str, Any]
 ) -> str:
     """Persist event to database and return SSE formatted string.
 
@@ -111,7 +112,7 @@ async def execute_tasks(session_id: UUID, request: Request) -> StreamingResponse
     # Register this execution connection - invalidates any previous connection
     connection_id = await execution_connection_service.register_connection(session_id)
 
-    async def event_stream():
+    async def event_stream() -> AsyncIterator[str]:
         """Generate SSE events from task execution."""
         # Capture execution start time for consistent date context across all tasks
         execution_start_time = datetime.now(UTC).strftime("%A, %B %d, %Y at %H:%M UTC")
@@ -134,7 +135,7 @@ async def execute_tasks(session_id: UUID, request: Request) -> StreamingResponse
         total_tasks = len(tasks_to_execute)
 
         # Track completed task results for context passing
-        completed_task_results: list[dict] = []
+        completed_task_results: list[dict[str, Any]] = []
 
         try:
             for task in tasks_to_execute:
@@ -253,7 +254,7 @@ async def execute_tasks(session_id: UUID, request: Request) -> StreamingResponse
                                 session_id, event_type, event
                             )
 
-                        else:
+                        elif event_type:
                             # Forward other events (tool_call, tool_result, content, artifact_*)
                             yield await _persist_and_yield_event(
                                 session_id, event_type, event
@@ -303,7 +304,7 @@ async def execute_tasks(session_id: UUID, request: Request) -> StreamingResponse
             await execution_connection_service.clear_connection(session_id)
 
             # Emit done event with summary
-            event = {
+            done_event: dict[str, Any] = {
                 "type": "done",
                 "summary": {
                     "total": total_tasks,
@@ -311,7 +312,7 @@ async def execute_tasks(session_id: UUID, request: Request) -> StreamingResponse
                     "failed": failed_count,
                 },
             }
-            yield await _persist_and_yield_event(session_id, "done", event)
+            yield await _persist_and_yield_event(session_id, "done", done_event)
 
         except asyncio.CancelledError:
             # Client disconnected - pause execution
@@ -347,7 +348,7 @@ async def execute_tasks(session_id: UUID, request: Request) -> StreamingResponse
     )
 
 
-def _sse_event(event_type: str, data: dict) -> str:
+def _sse_event(event_type: str, data: dict[str, Any]) -> str:
     """Format a dict as an SSE event string.
 
     Args:
@@ -493,7 +494,7 @@ async def summarize_session(session_id: UUID) -> StreamingResponse:
     completed = len(completed_tasks)
     failed = len([t for t in tasks if t.status.value == "failed"])
 
-    async def event_stream():
+    async def event_stream() -> AsyncIterator[str]:
         """Generate SSE events for summary."""
         try:
             # First create the summary artifact

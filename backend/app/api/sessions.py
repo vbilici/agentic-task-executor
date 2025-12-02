@@ -1,6 +1,6 @@
 """Sessions API endpoints."""
 
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query
@@ -17,7 +17,7 @@ async def list_sessions(
     status: SessionStatus | None = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
-) -> dict:
+) -> dict[str, Any]:
     """List all sessions with optional filtering."""
     sessions, total = await session_service.list(
         status=status,

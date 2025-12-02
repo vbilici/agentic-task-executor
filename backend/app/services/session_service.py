@@ -1,5 +1,6 @@
 """Session service for CRUD operations."""
 
+from typing import Any, cast
 from uuid import UUID
 
 from app.core.database import get_supabase_client
@@ -25,7 +26,8 @@ class SessionService:
             "status": SessionStatus.PLANNING.value,
         }
         result = self.client.table(self.table).insert(data).execute()
-        return Session(**result.data[0])
+        rows = cast(list[dict[str, Any]], result.data)
+        return Session(**rows[0])
 
     async def get(self, session_id: UUID) -> Session | None:
         """Get a session by ID."""
@@ -35,9 +37,10 @@ class SessionService:
             .eq("id", str(session_id))
             .execute()
         )
-        if not result.data:
+        rows = cast(list[dict[str, Any]], result.data)
+        if not rows:
             return None
-        return Session(**result.data[0])
+        return Session(**rows[0])
 
     async def get_detail(self, session_id: UUID) -> SessionDetail | None:
         """Get a session with all related data."""
@@ -64,11 +67,14 @@ class SessionService:
         # Fetch messages from LangGraph checkpoint state
         checkpoint_messages = await agent_service.get_messages_from_state(session_id)
 
+        tasks_rows = cast(list[dict[str, Any]], tasks_result.data)
+        artifacts_rows = cast(list[dict[str, Any]], artifacts_result.data)
+
         return SessionDetail(
             **session.model_dump(),
-            tasks=[Task(**t) for t in tasks_result.data],
+            tasks=[Task(**t) for t in tasks_rows],
             messages=[CheckpointMessage(**m) for m in checkpoint_messages],
-            artifacts=[ArtifactSummary(**a) for a in artifacts_result.data],
+            artifacts=[ArtifactSummary(**a) for a in artifacts_rows],
         )
 
     async def list(
@@ -78,7 +84,10 @@ class SessionService:
         offset: int = 0,
     ) -> tuple[list[Session], int]:
         """List sessions with optional filtering."""
-        query = self.client.table(self.table).select("*", count="exact")
+        query = self.client.table(self.table).select(
+            "*",
+            count="exact",  # type: ignore[arg-type]
+        )
 
         if status:
             query = query.eq("status", status.value)
@@ -86,7 +95,8 @@ class SessionService:
         query = query.order("created_at", desc=True).range(offset, offset + limit - 1)
         result = query.execute()
 
-        sessions = [Session(**s) for s in result.data]
+        rows = cast(list[dict[str, Any]], result.data)
+        sessions = [Session(**s) for s in rows]
         total = result.count or 0
         return sessions, total
 
@@ -100,9 +110,10 @@ class SessionService:
             .eq("id", str(session_id))
             .execute()
         )
-        if not result.data:
+        rows = cast(list[dict[str, Any]], result.data)
+        if not rows:
             return None
-        return Session(**result.data[0])
+        return Session(**rows[0])
 
     async def update_title(self, session_id: UUID, title: str) -> Session | None:
         """Update session title."""
@@ -112,16 +123,18 @@ class SessionService:
             .eq("id", str(session_id))
             .execute()
         )
-        if not result.data:
+        rows = cast(list[dict[str, Any]], result.data)
+        if not rows:
             return None
-        return Session(**result.data[0])
+        return Session(**rows[0])
 
     async def delete(self, session_id: UUID) -> bool:
         """Delete a session (cascades to related data)."""
         result = (
             self.client.table(self.table).delete().eq("id", str(session_id)).execute()
         )
-        return len(result.data) > 0
+        rows = cast(list[dict[str, Any]], result.data)
+        return len(rows) > 0
 
 
 # Singleton instance

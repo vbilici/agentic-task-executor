@@ -1,12 +1,12 @@
 """LangGraph planning agent definition."""
 
 from datetime import datetime
-from typing import Literal
+from typing import Literal, cast
 
 from langchain_core.messages import SystemMessage
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, StateGraph
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SecretStr
 
 from app.agent.state import PlanningState
 from app.core.config import get_settings
@@ -144,7 +144,7 @@ Now respond to the user in a friendly, conversational way that:
 Remember: The tasks are visible in the sidebar. First ask questions to refine the plan, then once they've answered, let them know they can execute."""
 
 
-def create_planning_graph() -> StateGraph:
+def create_planning_graph() -> StateGraph[PlanningState]:
     """Create the planning agent graph.
 
     New flow: Extract tasks FIRST, then chat with tasks in context.
@@ -157,16 +157,14 @@ def create_planning_graph() -> StateGraph:
     # Chat LLM (streaming enabled for real-time response)
     chat_llm = ChatOpenAI(
         model="gpt-4o",
-        api_key=settings.openai_api_key,
-        max_tokens=2048,
+        api_key=SecretStr(settings.openai_api_key),
         streaming=True,
     )
 
     # Task extraction LLM (structured output, no streaming)
     task_llm = ChatOpenAI(
         model="gpt-4o",
-        api_key=settings.openai_api_key,
-        max_tokens=2048,
+        api_key=SecretStr(settings.openai_api_key),
         streaming=False,
     ).with_structured_output(TaskList)
 
@@ -196,7 +194,7 @@ def create_planning_graph() -> StateGraph:
         prompt = TASK_EXTRACTION_PROMPT.format(current_date=current_date)
         system_msg = SystemMessage(content=prompt)
         messages_with_system = [system_msg, *messages]
-        result: TaskList = await task_llm.ainvoke(messages_with_system)
+        result = cast(TaskList, await task_llm.ainvoke(messages_with_system))
 
         tasks = []
         if result.ready_to_create_tasks and result.tasks:
@@ -263,7 +261,7 @@ def create_planning_graph() -> StateGraph:
         return "chat_only"
 
     # Build the graph
-    builder: StateGraph = StateGraph(PlanningState)
+    builder: StateGraph[PlanningState] = StateGraph(PlanningState)
 
     # Add nodes
     builder.add_node("should_extract", should_extract_node)
@@ -291,10 +289,10 @@ def create_planning_graph() -> StateGraph:
 
 
 # Lazy initialization for the planning graph builder
-_planning_graph_builder: StateGraph | None = None
+_planning_graph_builder: StateGraph[PlanningState] | None = None
 
 
-def get_planning_graph_builder() -> StateGraph:
+def get_planning_graph_builder() -> StateGraph[PlanningState]:
     """Get or create the planning graph builder (lazy initialization)."""
     global _planning_graph_builder
     if _planning_graph_builder is None:
